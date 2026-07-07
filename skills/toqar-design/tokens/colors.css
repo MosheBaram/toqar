@@ -1,0 +1,149 @@
+/* ============================================================
+   TOQAR — COLOR SYSTEM
+   Instrument, not billboard. Every color traces to a meaning.
+   Light + dark. Text pairings meet WCAG AA.
+   ============================================================ */
+
+:root {
+  /* ---- Neutral ramp — cool graphite (no enterprise beige) ---- */
+  --n-0:   #ffffff;
+  --n-50:  #f7f8f8;
+  --n-100: #eef0f1;
+  --n-150: #e4e7e9;
+  --n-200: #d6dadd;
+  --n-300: #b9c0c5;
+  --n-400: #98a1a8;
+  --n-500: #767f87;
+  --n-600: #5b636a;
+  --n-700: #444b51;
+  --n-800: #2e343a;
+  --n-900: #1b2024;
+  --n-950: #0d1114;
+
+  /* ---- Primary — Toqar teal (calm, terminal-adjacent, not vendor-blue) ---- */
+  --teal-50:  #e5f4f3;
+  --teal-100: #c1e6e3;
+  --teal-200: #93d3ce;
+  --teal-300: #57bab4;
+  --teal-400: #1f9a95;
+  --teal-500: #0e7c7b;
+  --teal-600: #0b6462;
+  --teal-700: #084d4c;
+  --teal-800: #063938;
+
+  /* ---- Semantic — keyed to product concepts ---------------- */
+  /* success / verified */
+  --green-50:  #e6f4ea;  --green-500: #1f8a4c;  --green-600: #17703d;  --green-300: #4ac47e;
+  /* failed */
+  --red-50:    #fbe9e9;  --red-500:   #cf3d3d;  --red-600:   #a92f2f;  --red-300:   #ef8a8a;
+  /* abandoned */
+  --amber-50:  #f7edd8;  --amber-500: #a9700f;  --amber-600: #895a0b;  --amber-300: #dda94a;
+  /* handoff / human-touch */
+  --violet-50: #eeeafb;  --violet-500:#6f52cf;  --violet-600:#5940ad;  --violet-300:#ab93ee;
+  /* agent-autonomous — keyed to brand teal (the agent acting alone) */
+  --auto-50:   var(--teal-50); --auto-500: var(--teal-500); --auto-600: var(--teal-600); --auto-300: var(--teal-300);
+
+  /* ---- TOQAR layer accents — categorical, legend-distinct --- */
+  --toqar-t: #3b6fe0;  /* Task success        */
+  --toqar-o: #12897e;  /* Operational eff.    */
+  --toqar-q: #8b5cf6;  /* Quality & drift     */
+  --toqar-a: #c77d11;  /* Autonomy & trust    */
+  --toqar-r: #d6497b;  /* Retention           */
+  --toqar-t-soft: #e6edfb;
+  --toqar-o-soft: #dbefec;
+  --toqar-q-soft: #efe9fd;
+  --toqar-a-soft: #f6ecd7;
+  --toqar-r-soft: #fbe6ee;
+
+  /* ============ SEMANTIC ALIASES — LIGHT (default) =========== */
+  --bg:            var(--n-50);
+  --bg-inset:      var(--n-100);
+  --surface:       var(--n-0);
+  --surface-2:     var(--n-50);
+  --surface-sunken:var(--n-100);
+  --border:        var(--n-200);
+  --border-strong: var(--n-300);
+  --border-subtle: var(--n-150);
+
+  --text:          var(--n-900);
+  --text-muted:    var(--n-600);
+  --text-subtle:   var(--n-500);
+  --text-inverse:  var(--n-0);
+
+  --primary:       var(--teal-500);
+  --primary-hover: var(--teal-600);
+  --primary-soft:  var(--teal-50);
+  --primary-fg:    #ffffff;
+  --focus-ring:    var(--teal-400);
+
+  --success:       var(--green-500);
+  --success-soft:  var(--green-50);
+  --failed:        var(--red-500);
+  --failed-soft:   var(--red-50);
+  --abandoned:     var(--amber-500);
+  --abandoned-soft:var(--amber-50);
+  --handoff:       var(--violet-500);
+  --handoff-soft:  var(--violet-50);
+  --autonomous:    var(--teal-500);
+  --autonomous-soft:var(--teal-50);
+
+  /* delta directionality (semantic, not literal red/green) */
+  --delta-good:    var(--green-500);
+  --delta-good-soft:var(--green-50);
+  --delta-bad:     var(--red-500);
+  --delta-bad-soft:var(--red-50);
+  --delta-flat:    var(--n-500);
+  --delta-flat-soft:var(--n-100);
+
+  --shadow-color: 210 12% 12%;
+}
+
+/* ================= DARK THEME ================= */
+[data-theme="dark"] {
+  --bg:            var(--n-950);
+  --bg-inset:      #0a0d0f;
+  --surface:       #14181b;
+  --surface-2:     #1a1f22;
+  --surface-sunken:#0b0e10;
+  --border:        #2b3237;
+  --border-strong: #3b444a;
+  --border-subtle: #22282c;
+
+  --text:          #eef1f2;
+  --text-muted:    #9aa3aa;
+  --text-subtle:   #737c83;
+  --text-inverse:  var(--n-950);
+
+  --primary:       var(--teal-300);
+  --primary-hover: var(--teal-200);
+  --primary-soft:  #0e2b2a;
+  --primary-fg:    #04201f;
+  --focus-ring:    var(--teal-300);
+
+  --success:       var(--green-300);
+  --success-soft:  #12271a;
+  --failed:        var(--red-300);
+  --failed-soft:   #2c1414;
+  --abandoned:     var(--amber-300);
+  --abandoned-soft:#2a2110;
+  --handoff:       var(--violet-300);
+  --handoff-soft:  #1e1836;
+  --autonomous:    var(--teal-300);
+  --autonomous-soft:#0e2b2a;
+
+  --delta-good:    var(--green-300);
+  --delta-good-soft:#12271a;
+  --delta-bad:     var(--red-300);
+  --delta-bad-soft:#2c1414;
+  --delta-flat:    var(--n-400);
+  --delta-flat-soft:#1e2429;
+
+  /* TOQAR accents — lifted for dark legibility */
+  --toqar-t: #7aa0f2;  --toqar-t-soft:#161e30;
+  --toqar-o: #46b3a8;  --toqar-o-soft:#0f2624;
+  --toqar-q: #b499f7;  --toqar-q-soft:#1d1733;
+  --toqar-a: #e0a94a;  --toqar-a-soft:#2a2010;
+  --toqar-r: #ec7ba5;  --toqar-r-soft:#2c1620;
+
+  --shadow-color: 210 40% 2%;
+}
