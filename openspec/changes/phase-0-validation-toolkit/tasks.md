@@ -49,12 +49,12 @@
 
 ## 8. Validation ops kit (plan Task 7)
 
-- [ ] 8.1 Write `docs/validation/README.md` (cadence, weekly ritual, decision rules)
-- [ ] 8.2 Write `intake-template.md` (three unanswerable questions verbatim, task taxonomy draft, destination, access)
-- [ ] 8.3 Write `weekly-report-template.md` (TOQAR snapshot, finding of the week, question-you-can-now-answer, watching next week)
-- [ ] 8.4 Write `question-log.md` (verbatim log with agent-shaped/classic classification)
-- [ ] 8.5 Write `scorecard.md` (A1/A2/A3/WTP gates, decision rules, weekly history)
-- [ ] 8.6 Commit
+- [x] 8.1 Write `docs/validation/README.md` (cadence, weekly ritual, decision rules)
+- [x] 8.2 Write `intake-template.md` (three unanswerable questions verbatim, task taxonomy draft, destination, access)
+- [x] 8.3 Write `weekly-report-template.md` (TOQAR snapshot, finding of the week, question-you-can-now-answer, watching next week)
+- [x] 8.4 Write `question-log.md` (verbatim log with agent-shaped/classic classification)
+- [x] 8.5 Write `scorecard.md` (A1/A2/A3/WTP gates, decision rules, weekly history)
+- [x] 8.6 Commit
 
 ## 9. Fixture app and skill dry-run (addition — design D4)
 
