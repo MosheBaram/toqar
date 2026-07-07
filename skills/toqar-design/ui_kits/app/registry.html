@@ -1,0 +1,142 @@
+<!-- @dsCard group="Pages" viewport="1180x760" name="Registry browser" subtitle="The event registry as shared contract — click an event for its full record. ◐ toggles theme." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Toqar — Registry</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  html,body{margin:0;background:var(--bg)}
+  body{font-family:var(--font-sans);color:var(--text)}
+  a{color:var(--primary)} a:hover{color:var(--primary-hover)}
+</style>
+</head>
+<body data-theme="light">
+<div id="root"></div>
+<script type="text/babel" src="./appshell.jsx"></script>
+<script type="text/babel">
+  const { EventChip } = window.ToqarDesignSystem_9aa7e3;
+  const { AppShell } = window;
+
+  const STATUS_COLOR = {
+    active:     { fg: "var(--success)", bg: "var(--success-soft)" },
+    proposed:   { fg: "var(--handoff)", bg: "var(--handoff-soft)" },
+    deprecated: { fg: "var(--text-subtle)", bg: "var(--surface-2)" },
+  };
+
+  const EVENTS = [
+    { name: "task_completed", status: "active", since: "agent.v12",
+      description: "The agent believes the task's goal state is reached. Fires once per run, at the end.",
+      journey: "reply_to_lead → draft → send → task_completed",
+      owner_metric: "Task success rate (T)",
+      hypothesis: "Completion, verified by a downstream reply, is the single number the business trusts.",
+      locations: ["agents/sdr/runner.py:214", "agents/sdr/finalize.py:88"] },
+    { name: "reply_received", status: "active", since: "agent.v19",
+      description: "A lead replied to an agent-sent message. The verification event for task_completed.",
+      journey: "send → (external) → webhook → reply_received",
+      owner_metric: "Verified success rate (T)",
+      hypothesis: "Self-reported completion overstates success; only a reply proves the loop closed.",
+      locations: ["ingest/webhooks/email.py:61"] },
+    { name: "step_executed", status: "active", since: "agent.v12",
+      description: "One reasoning/action step finished. Carries step index, tool used, duration_ms.",
+      journey: "every step of every run",
+      owner_metric: "Cost per completed task (O)",
+      hypothesis: "Step count × model cost explains most of the cost curve; outliers reveal loops.",
+      locations: ["agents/sdr/runner.py:141"] },
+    { name: "tool_called", status: "active", since: "agent.v14",
+      description: "A tool invocation with tool name, duration_ms, ok/timeout/error outcome.",
+      journey: "step_executed → tool_called (0..n per step)",
+      owner_metric: "Tool failure rate (O)",
+      hypothesis: "Tool failures, not model quality, cause most abandoned runs.",
+      locations: ["agents/sdr/tools/base.py:52"] },
+    { name: "human_takeover", status: "active", since: "agent.v16",
+      description: "A human agent took over the conversation. Carries reason and takeover step.",
+      journey: "any step → human_takeover → run ends",
+      owner_metric: "Autonomy rate (A)",
+      hypothesis: "Takeovers cluster on pricing objections; better grounding should reduce them.",
+      locations: ["console/handoff.py:33", "agents/sdr/policy.py:127"] },
+    { name: "crm_lookup_timeout", status: "proposed", since: "—",
+      description: "PROPOSED: explicit event when crm_lookup exceeds its timeout budget, with elapsed_ms.",
+      journey: "tool_called(crm_lookup) → crm_lookup_timeout",
+      owner_metric: "Tool failure rate (O)",
+      hypothesis: "Timeouts are currently inferred from duration; an explicit event removes ambiguity in the v42 regression analysis.",
+      locations: ["(pending PR #412: agents/sdr/tools/crm.py)"] },
+    { name: "lead_scored", status: "deprecated", since: "agent.v08",
+      description: "DEPRECATED in v31 — scoring moved into qualify_inbound; kept for historical queries.",
+      journey: "(historical) qualify → lead_scored",
+      owner_metric: "—",
+      hypothesis: "—",
+      locations: ["(removed in agent.v31)"] },
+  ];
+
+  function StatusPill({ status }) {
+    const c = STATUS_COLOR[status];
+    return <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", fontWeight: 600, padding: "2px 7px", borderRadius: "var(--radius-pill)", background: c.bg, color: c.fg }}>{status}</span>;
+  }
+
+  function Field({ label, children, mono }) {
+    return (
+      <div>
+        <div style={{ fontSize: "var(--fs-caption)", fontWeight: 600, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-subtle)", marginBottom: "3px" }}>{label}</div>
+        <div style={{ fontSize: mono ? "var(--fs-micro)" : "var(--fs-body)", lineHeight: 1.5, fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)", color: "var(--text)" }}>{children}</div>
+      </div>
+    );
+  }
+
+  function RegistryPage() {
+    const [sel, setSel] = React.useState(0);
+    const e = EVENTS[sel];
+    return (
+      <AppShell active="Registry" maxWidth={1000}>
+        <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "14px", alignItems: "start" }}>
+          {/* list */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+            <div style={{ padding: "9px 12px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: "var(--fs-caption)", fontWeight: 600, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-subtle)" }}>Events</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", color: "var(--text-subtle)" }}>{EVENTS.length}</span>
+            </div>
+            {EVENTS.map((ev, i) => (
+              <button key={ev.name} onClick={() => setSel(i)} style={{
+                display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
+                padding: "8px 12px", border: "none", cursor: "pointer",
+                borderBottom: i === EVENTS.length - 1 ? "none" : "1px solid var(--border-subtle)",
+                background: i === sel ? "var(--primary-soft)" : "var(--surface)",
+              }}>
+                <span style={{ width: "7px", height: "7px", borderRadius: "2px", flex: "none", background: STATUS_COLOR[ev.status].fg }} />
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-micro)", fontWeight: i === sel ? 600 : 400, color: i === sel ? "var(--primary)" : ev.status === "deprecated" ? "var(--text-subtle)" : "var(--text)", textDecoration: ev.status === "deprecated" ? "line-through" : "none" }}>{ev.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* detail */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "18px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <EventChip name={e.name} tone="primary" style={{ fontSize: "var(--fs-body)", padding: "5px 10px" }} />
+              <StatusPill status={e.status} />
+              <span style={{ flex: 1 }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", color: "var(--text-subtle)" }}>since {e.since}</span>
+            </div>
+            <Field label="Description">{e.description}</Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              <Field label="Journey" mono>{e.journey}</Field>
+              <Field label="Owner metric">{e.owner_metric}</Field>
+            </div>
+            <Field label="Hypothesis">{e.hypothesis}</Field>
+            <Field label="Emission code locations" mono>
+              <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                {e.locations.map((l, i) => <span key={i} style={{ color: "var(--text-muted)" }}>{l}</span>)}
+              </div>
+            </Field>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<RegistryPage />);
+</script>
+</body>
+</html>

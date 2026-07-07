@@ -1,0 +1,151 @@
+<!-- @dsCard group="Pages" viewport="1180x820" name="Feed" subtitle="Findings stream with TOQAR/severity/task filters; click “show the work”. ◐ toggles theme." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Toqar — Feed</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  html,body{margin:0;background:var(--bg)}
+  body{font-family:var(--font-sans);color:var(--text)}
+  a{color:var(--primary)} a:hover{color:var(--primary-hover)}
+</style>
+</head>
+<body data-theme="light">
+<div id="root"></div>
+<script type="text/babel" src="./appshell.jsx"></script>
+<script type="text/babel">
+  const { FindingCard, EvidenceDrilldown } = window.ToqarDesignSystem_9aa7e3;
+  const { AppShell, FilterChip } = window;
+
+  const FINDINGS = [
+    {
+      id: "f1", layer: "T", severity: "critical", variant: "regression", task: "reply_to_lead",
+      props: {
+        headline: "Task success dropped 9 pts after the v42 bump — traced to crm_lookup timeouts.",
+        metric: { before: "71.2%", after: "62.0%", fromVersion: "agent.v41", toVersion: "agent.v42", delta: { value: -9.2, unit: " pts" } },
+        summary: "The regression starts exactly at the Tuesday 14:05 deploy. 84% of newly failed runs abandon at the crm_lookup step; no other tool's failure rate moved.",
+        chips: ["reply_to_lead", "segment:outbound"], timestamp: "2h ago", workSteps: 6, queryId: "q_8f21c",
+      },
+      work: {
+        title: "Why task success dropped 71% → 62%",
+        steps: [
+          { title: "Compare TSR across agent versions", note: "The drop aligns exactly with the v42 deploy on Tue 14:05.",
+            query: "SELECT version, tsr(runs) FROM runs\nWHERE task = 'reply_to_lead' GROUP BY version;", queryId: "q_8f21c",
+            result: { type: "table", columns: ["version", "runs", "tsr"], rows: [["agent.v41", "612", "71.2%"], ["agent.v42", "672", "62.0%"]] } },
+          { title: "Segment failed runs by final tool call", note: "One tool dominates the new failures.",
+            query: "SELECT last_tool, count(*) FROM runs\nWHERE status = 'failed' AND version = 'agent.v42'\nGROUP BY last_tool ORDER BY 2 DESC;", queryId: "q_9d02a",
+            result: { type: "stat", value: "84%", label: "of failed runs end at crm_lookup" } },
+          { title: "Check crm_lookup latency trend", note: "p95 crossed the 10s timeout budget mid-week.",
+            query: "SELECT day, p95(duration_ms) FROM tool_calls\nWHERE tool = 'crm_lookup' GROUP BY day;", queryId: "q_b7f31",
+            result: { type: "spark", data: [2.6, 2.8, 2.7, 3.1, 5.9, 7.8, 8.4], label: "p95 seconds, last 7 days", color: "var(--failed)" } },
+        ],
+        conclusion: "v42 doubled the context fetched per crm_lookup call, pushing p95 past the timeout. Recommend retry-with-backoff (experiment drafted) before any rollback.",
+      },
+    },
+    {
+      id: "f2", layer: "O", severity: "warning", variant: "anomaly", task: "reply_to_lead",
+      props: {
+        headline: "crm_lookup p95 latency tripled to 8.4s and is now eating the timeout budget.",
+        metric: { label: "crm_lookup p95", value: "8.4s", spark: [2.6, 2.8, 2.7, 3.1, 5.9, 7.8, 8.4], delta: { value: 5.6, goodWhen: "down", unit: "s" } },
+        summary: "Latency stepped up in two jumps that match the vendor's status page incidents. Runs that hit the 10s timeout retry once, then fail.",
+        chips: ["crm_lookup", "task:reply_to_lead"], timestamp: "4h ago", workSteps: 4, queryId: "q_9d02a",
+      },
+    },
+    {
+      id: "f3", layer: "T", severity: "positive", variant: "experiment", task: "reply_to_lead",
+      props: {
+        headline: "Retry-with-backoff on crm_lookup recovers 6 of the 9 lost points.",
+        metric: { verdict: "ship", arms: [{ name: "control", value: "62.0%" }, { name: "retry_backoff", value: "68.1%" }] },
+        summary: "7-day guarded experiment on 20% of traffic. Cost per completed task rose $0.03 — well under the $0.09 budget you set.",
+        chips: ["exp:crm_retry_v1", "reply_to_lead"], timestamp: "yesterday", workSteps: 5, queryId: "q_a44e7",
+      },
+    },
+    {
+      id: "f4", layer: "Q", severity: "warning", variant: "anomaly", task: "qualify_inbound",
+      props: {
+        headline: "Reply-quality drift on qualify_inbound has grown three straight weeks.",
+        metric: { label: "drift vs. gold set", value: "3.7%", spark: [1.4, 1.6, 2.1, 2.6, 3.1, 3.5, 3.7], sparkColor: "var(--abandoned)", delta: { value: 1.6, goodWhen: "down", unit: " pts" } },
+        summary: "Drift does not correlate with any deploy or prompt change. The largest divergence is in pricing objections — the gold set may be stale.",
+        chips: ["qualify_inbound", "segment:inbound"], timestamp: "2d ago", workSteps: 7, queryId: "q_c91d4",
+      },
+    },
+    {
+      id: "f5", layer: "T", severity: "info", variant: "digest", task: "reply_to_lead",
+      props: {
+        headline: "Week 27: success recovering, quality drift still unexplained.",
+        metric: { layers: [
+          { layer: "T", value: "62.0%", delta: { value: 4.1, unit: "" } },
+          { layer: "O", value: "$0.42", delta: { value: -0.06, goodWhen: "down", format: v => `$${Math.abs(v).toFixed(2)}` } },
+          { layer: "Q", value: "3.7%", delta: { value: 1.6, goodWhen: "down", unit: "" } },
+          { layer: "A", value: "37", delta: { value: 9, goodWhen: "down", unit: "" } },
+          { layer: "R", value: "88.5%", delta: { value: 2.5, unit: "" } },
+        ]},
+        summary: "Retry fix shipped Thursday; TSR is climbing back. Reply-quality drift (Q) has grown for three straight weeks and does not correlate with any deploy.",
+        chips: ["reply_to_lead"], timestamp: "Mon 09:00", workSteps: 9, queryId: "q_wk27",
+      },
+    },
+  ];
+
+  const LAYERS = ["T", "O", "Q", "A", "R"];
+  const SEVERITIES = ["critical", "warning", "positive", "info"];
+  const TASKS = ["reply_to_lead", "qualify_inbound"];
+
+  function FeedPage() {
+    const [layers, setLayers] = React.useState([]);
+    const [severity, setSeverity] = React.useState(null);
+    const [task, setTask] = React.useState(null);
+    const [expanded, setExpanded] = React.useState(null);
+
+    const toggle = (arr, v, set) => set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+    const shown = FINDINGS.filter(f =>
+      (!layers.length || layers.includes(f.layer)) &&
+      (!severity || f.severity === severity) &&
+      (!task || f.task === task)
+    );
+
+    return (
+      <AppShell active="Feed">
+        {/* filter row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
+          {LAYERS.map(l => (
+            <FilterChip key={l} active={layers.includes(l)} onClick={() => toggle(layers, l, setLayers)} layer={l}>{l}</FilterChip>
+          ))}
+          <span style={{ width: "1px", height: "18px", background: "var(--border)", margin: "0 4px" }} />
+          {SEVERITIES.map(s => (
+            <FilterChip key={s} active={severity === s} onClick={() => setSeverity(severity === s ? null : s)}>{s}</FilterChip>
+          ))}
+          <span style={{ width: "1px", height: "18px", background: "var(--border)", margin: "0 4px" }} />
+          {TASKS.map(t => (
+            <FilterChip key={t} active={task === t} onClick={() => setTask(task === t ? null : t)} mono>{t}</FilterChip>
+          ))}
+          <span style={{ flex: 1 }} />
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", color: "var(--text-subtle)", whiteSpace: "nowrap" }}>{shown.length} findings</span>
+        </div>
+
+        {/* stream */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {shown.map(f => (
+            <React.Fragment key={f.id}>
+              <FindingCard
+                variant={f.variant} layer={f.layer} severity={f.severity}
+                {...f.props}
+                onShowWork={f.work ? () => setExpanded(expanded === f.id ? null : f.id) : undefined}
+              />
+              {f.work && expanded === f.id ? (
+                <EvidenceDrilldown layer={f.layer} {...f.work} onCollapse={() => setExpanded(null)} style={{ marginLeft: "26px" }} />
+              ) : null}
+            </React.Fragment>
+          ))}
+        </div>
+      </AppShell>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<FeedPage />);
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!-- @dsCard group="Pages" viewport="1180x840" name="Onboarding — tracking plan" subtitle="Connect repo → review agent-proposed plan → approve → data flowing. Click through. ◐ toggles theme." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Toqar — Onboarding</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  html,body{margin:0;background:var(--bg)}
+  body{font-family:var(--font-sans);color:var(--text)}
+  a{color:var(--primary)} a:hover{color:var(--primary-hover)}
+</style>
+</head>
+<body data-theme="light">
+<div id="root"></div>
+<script type="text/babel" src="./appshell.jsx"></script>
+<script type="text/babel">
+  const { EventChip } = window.ToqarDesignSystem_9aa7e3;
+  const { AppShell } = window;
+
+  const PLAN_EVENTS = [
+    { name: "task_completed", layer: "T", trigger: "run reaches goal state", props: "run_id, task, verified",
+      hypothesis: "Completion, verified by a downstream reply, is the number the business trusts.", loc: "agents/sdr/runner.py:214" },
+    { name: "reply_received", layer: "T", trigger: "lead replies (webhook)", props: "run_id, latency_h",
+      hypothesis: "Only a reply proves the loop closed; separates verified from self_reported.", loc: "ingest/webhooks/email.py:61" },
+    { name: "step_executed", layer: "O", trigger: "each reasoning step ends", props: "run_id, idx, duration_ms, tokens",
+      hypothesis: "Step count × model cost explains the cost curve; outliers reveal loops.", loc: "agents/sdr/runner.py:141" },
+    { name: "tool_called", layer: "O", trigger: "each tool invocation", props: "run_id, tool, duration_ms, outcome",
+      hypothesis: "Tool failures, not model quality, cause most abandoned runs.", loc: "agents/sdr/tools/base.py:52" },
+    { name: "human_takeover", layer: "A", trigger: "human takes the thread", props: "run_id, reason, step_idx",
+      hypothesis: "Takeovers cluster on pricing objections; grounding should reduce them.", loc: "console/handoff.py:33" },
+    { name: "run_abandoned", layer: "T", trigger: "run ends without goal", props: "run_id, last_tool, last_step",
+      hypothesis: "Abandonment point locates the failure mode faster than logs.", loc: "agents/sdr/runner.py:229" },
+  ];
+  const QUESTIONS = [
+    { q: "Is the agent actually succeeding?", events: ["task_completed", "reply_received", "run_abandoned"] },
+    { q: "What does success cost?", events: ["step_executed", "tool_called"] },
+    { q: "When do humans have to step in?", events: ["human_takeover"] },
+  ];
+  const LAYER_COLORS = { T: "var(--toqar-t)", O: "var(--toqar-o)", Q: "var(--toqar-q)", A: "var(--toqar-a)", R: "var(--toqar-r)" };
+
+  function Stepper({ step }) {
+    const items = ["Connect repo", "Review tracking plan", "Data flowing"];
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "18px" }}>
+        {items.map((it, i) => (
+          <React.Fragment key={it}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
+              <span style={{
+                width: "20px", height: "20px", borderRadius: "var(--radius-sm)", flex: "none",
+                fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                background: i < step ? "var(--primary)" : i === step ? "var(--primary-soft)" : "var(--surface-2)",
+                color: i < step ? "var(--primary-fg)" : i === step ? "var(--primary)" : "var(--text-subtle)",
+                border: i === step ? "1.5px solid var(--primary)" : "1px solid var(--border)",
+              }}>{i < step ? "✓" : i + 1}</span>
+              <span style={{ fontSize: "var(--fs-small)", fontWeight: i === step ? 600 : 400, color: i === step ? "var(--text)" : "var(--text-muted)" }}>{it}</span>
+            </span>
+            {i < items.length - 1 ? <span style={{ flex: "0 0 28px", height: "1.5px", background: "var(--border)" }} /> : null}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  }
+
+  function Card({ children, style }) {
+    return <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "20px 22px", display: "flex", flexDirection: "column", gap: "14px", ...style }}>{children}</div>;
+  }
+  function PrimaryBtn({ children, onClick }) {
+    return <button onClick={onClick} style={{ alignSelf: "flex-start", fontFamily: "var(--font-sans)", fontSize: "var(--fs-small)", fontWeight: 600, padding: "8px 16px", borderRadius: "var(--radius-sm)", background: "var(--primary)", color: "var(--primary-fg)", border: "none", cursor: "pointer" }}>{children}</button>;
+  }
+  function Label({ children }) {
+    return <div style={{ fontSize: "var(--fs-caption)", fontWeight: 600, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-subtle)" }}>{children}</div>;
+  }
+
+  /* Step 1 — connect repo */
+  function ConnectStep({ onNext }) {
+    const [sel, setSel] = React.useState(null);
+    const repos = ["northbeam/sdr-agent", "northbeam/web", "northbeam/infra"];
+    return (
+      <Card>
+        <h2 style={{ margin: 0, fontSize: "var(--fs-h3)", fontWeight: 600 }}>Connect the repo your agent lives in.</h2>
+        <p style={{ margin: 0, fontSize: "var(--fs-body)", color: "var(--text-muted)", lineHeight: 1.55 }}>
+          Toqar reads the code to propose a tracking plan. Read-only — nothing is written without your approval.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          {repos.map(r => (
+            <button key={r} onClick={() => setSel(r)} style={{
+              display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", textAlign: "left",
+              fontFamily: "var(--font-mono)", fontSize: "var(--fs-small)", cursor: "pointer",
+              background: sel === r ? "var(--primary-soft)" : "var(--surface)",
+              color: sel === r ? "var(--primary)" : "var(--text)",
+              border: sel === r ? "1px solid var(--primary)" : "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+            }}>
+              <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: sel === r ? "var(--primary)" : "var(--border-strong)" }} />
+              {r}
+            </button>
+          ))}
+        </div>
+        {sel ? <PrimaryBtn onClick={onNext}>Analyze {sel.split("/")[1]} →</PrimaryBtn> : null}
+      </Card>
+    );
+  }
+
+  /* Step 2 — tracking plan review (the first impression) */
+  function PlanStep({ onNext }) {
+    const [open, setOpen] = React.useState(null);
+    const cell = { padding: "7px 10px", borderBottom: "1px solid var(--border-subtle)", fontSize: "var(--fs-micro)", textAlign: "left", verticalAlign: "top" };
+    return (
+      <Card>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+          <h2 style={{ margin: 0, fontSize: "var(--fs-h3)", fontWeight: 600 }}>Proposed tracking plan</h2>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", color: "var(--text-subtle)" }}>northbeam/sdr-agent · agent.v41</span>
+        </div>
+
+        <div>
+          <Label>Summary</Label>
+          <p style={{ margin: "4px 0 0", fontSize: "var(--fs-body)", color: "var(--text-muted)", lineHeight: 1.55 }}>
+            Your SDR agent runs one task, reply_to_lead, through a draft→send loop with two external tools.
+            Six events cover its full lifecycle; every one maps to a question you asked.
+          </p>
+        </div>
+
+        <div>
+          <Label>Three questions → events</Label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
+            {QUESTIONS.map((q, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "var(--fs-small)", fontWeight: 500, minWidth: "230px" }}>{q.q}</span>
+                <span style={{ display: "inline-flex", gap: "5px", flexWrap: "wrap" }}>
+                  {q.events.map(e => <EventChip key={e} name={e} tone="quiet" />)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Added events (6) — click a row for detail</Label>
+          <table style={{ borderCollapse: "collapse", width: "100%", marginTop: "6px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+            <thead>
+              <tr style={{ background: "var(--surface-2)" }}>
+                <th style={{ ...cell, fontFamily: "var(--font-sans)", fontSize: "var(--fs-caption)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "var(--tracking-label)", color: "var(--text-subtle)" }}>event</th>
+                <th style={{ ...cell, fontFamily: "var(--font-sans)", fontSize: "var(--fs-caption)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "var(--tracking-label)", color: "var(--text-subtle)", width: "36px" }}>layer</th>
+                <th style={{ ...cell, fontFamily: "var(--font-sans)", fontSize: "var(--fs-caption)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "var(--tracking-label)", color: "var(--text-subtle)" }}>trigger</th>
+                <th style={{ ...cell, fontFamily: "var(--font-sans)", fontSize: "var(--fs-caption)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "var(--tracking-label)", color: "var(--text-subtle)" }}>properties</th>
+              </tr>
+            </thead>
+            <tbody>
+              {PLAN_EVENTS.map((e, i) => (
+                <React.Fragment key={e.name}>
+                  <tr onClick={() => setOpen(open === i ? null : i)} style={{ cursor: "pointer", background: open === i ? "var(--primary-soft)" : "transparent" }}>
+                    <td style={{ ...cell, fontFamily: "var(--font-mono)" }}>
+                      <span style={{ color: "var(--success)", fontWeight: 600, marginRight: "6px" }}>+</span>{e.name}
+                    </td>
+                    <td style={{ ...cell }}>
+                      <span style={{ width: "15px", height: "15px", borderRadius: "var(--radius-xs)", background: LAYER_COLORS[e.layer], color: "#fff", fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{e.layer}</span>
+                    </td>
+                    <td style={{ ...cell, color: "var(--text-muted)" }}>{e.trigger}</td>
+                    <td style={{ ...cell, fontFamily: "var(--font-mono)", color: "var(--text-subtle)" }}>{e.props}</td>
+                  </tr>
+                  {open === i ? (
+                    <tr>
+                      <td colSpan="4" style={{ ...cell, background: "var(--surface-sunken)" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "2px 0" }}>
+                          <span style={{ fontSize: "var(--fs-small)", color: "var(--text)" }}><b>Hypothesis:</b> {e.hypothesis}</span>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", color: "var(--text-subtle)" }}>emits at {e.loc}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <PrimaryBtn onClick={onNext}>Approve plan — open PR</PrimaryBtn>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", color: "var(--text-subtle)" }}>opens PR against northbeam/sdr-agent · you merge</span>
+        </div>
+      </Card>
+    );
+  }
+
+  /* Step 3 — data flowing */
+  function DoneStep() {
+    const row = { display: "flex", alignItems: "center", gap: "8px", fontFamily: "var(--font-mono)", fontSize: "var(--fs-small)" };
+    const doneSq = { width: "10px", height: "10px", borderRadius: "2px", background: "var(--success)", flex: "none" };
+    const pendSq = { width: "10px", height: "10px", borderRadius: "2px", border: "1.5px solid var(--border-strong)", flex: "none" };
+    return (
+      <Card>
+        <h2 style={{ margin: 0, fontSize: "var(--fs-h3)", fontWeight: 600 }}>Data is flowing.</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: "9px", padding: "14px", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)" }}>
+          <div style={row}><span style={doneSq} /><span>PR #408 merged</span><span style={{ color: "var(--text-subtle)" }}>· 6 events instrumented</span></div>
+          <div style={row}><span style={doneSq} /><span>first event landed</span><span style={{ color: "var(--text-subtle)" }}>· task_completed, 12:41</span></div>
+          <div style={row}><span style={pendSq} /><span style={{ color: "var(--text-muted)" }}>first sweep</span><span style={{ color: "var(--text-subtle)" }}>· at the 6h mark; findings post to the feed</span></div>
+        </div>
+        <p style={{ margin: 0, fontSize: "var(--fs-body)", color: "var(--text-muted)", lineHeight: 1.55 }}>
+          The agent won't post a finding it can't trace to a query. Expect the first one after the 6h sweep — or sooner if something is clearly wrong.
+        </p>
+      </Card>
+    );
+  }
+
+  function OnboardingPage() {
+    const [step, setStep] = React.useState(1); // land on the money screen
+    return (
+      <AppShell active="Feed" maxWidth={840}>
+        <Stepper step={step} />
+        {step === 0 ? <ConnectStep onNext={() => setStep(1)} /> : null}
+        {step === 1 ? <PlanStep onNext={() => setStep(2)} /> : null}
+        {step === 2 ? <DoneStep /> : null}
+        {step > 0 ? (
+          <button onClick={() => setStep(step - 1)} style={{ marginTop: "12px", fontFamily: "var(--font-mono)", fontSize: "var(--fs-caption)", color: "var(--text-subtle)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>← back</button>
+        ) : null}
+      </AppShell>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<OnboardingPage />);
+</script>
+</body>
+</html>
