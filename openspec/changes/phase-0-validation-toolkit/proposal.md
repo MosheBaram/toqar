@@ -12,6 +12,7 @@ Toqar — an agentic product-analytics platform ("Mixpanel for the agentic world
 - New Claude Code skill `skills/instrument-agentic-app`: maps a partner repo's agent loop, proposes a tracking plan (review gate), then implements an instrumentation PR. Quality bar: mergeable with at most minor edits.
 - Validation ops kit under `docs/validation/`: intake template, weekly report template, verbatim question log, kill-criteria scorecard.
 - **Addition beyond the source plan:** a fixture agentic app for dry-running the skill repeatably before it touches a real partner repo (the plan hand-waved this as "any small agentic repo").
+- **Addition beyond the source plan:** CI quality gates — a GitHub Actions workflow (typecheck + tests on every push/PR) plus an anti-slop static check that fails the build on fake-data patterns outside tests. The plan stated these constraints but nothing enforced them.
 - **Naming decision applied:** the product is named **Toqar**. The source plan's `agentic-analytics` names are updated in place (`toqar` root package, `@toqar/registry` scope). Partner-facing artifacts are unaffected — the vendored analytics wrapper is self-contained and only uses the TOQAR vocabulary.
 
 ## Capabilities
@@ -22,6 +23,7 @@ Toqar — an agentic product-analytics platform ("Mixpanel for the agentic world
 - `tracking-plan` — registry entries (an event's identity card: journey, owner metric, hypothesis), planned events with code anchors, the tracking-plan-as-diff format, and its markdown renderer.
 - `instrumentation-skill` — the concierge Claude Code skill: two-phase flow with a human review gate, PR quality bar, privacy rules for generated code, and the fixture dry-run gate.
 - `validation-ops` — the operating documents for the 8-week concierge test.
+- `quality-gates` — CI workflow (typecheck + tests on push/PR) and the anti-slop static check enforcing the no-fake-data rule.
 
 ### Modified Capabilities
 

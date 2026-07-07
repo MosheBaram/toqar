@@ -33,11 +33,15 @@ One package needs no build orchestrator; every scaffold file is explicit. NX can
 
 ### D4: Fixture app added beyond the source plan
 
-The plan's only dry-run instruction was "any small agentic repo" — a hand-wave directly under the phase's single hard quality bar (PR mergeable with ≤ minor edits, and kill-criterion A1 depends on it). A small deliberately-imperfect fixture (agent loop, model call, tool call, human-approval seam, planted sensitive content as PII bait) makes skill quality repeatable and testable. This is the one scope addition; strike task group 8 to revert it.
+The plan's only dry-run instruction was "any small agentic repo" — a hand-wave directly under the phase's single hard quality bar (PR mergeable with ≤ minor edits, and kill-criterion A1 depends on it). A small deliberately-imperfect fixture (agent loop, model call, tool call, human-approval seam, planted sensitive content as PII bait) makes skill quality repeatable and testable. Scope addition (with D6); strike task group 9 to revert it.
 
 ### D5: Handoff docs are otherwise immutable
 
 `new-repo-handoff/` is the historical record. Only the naming edits from D1 touch it; quarry files are never edited in place (they get copied and decoupled in Phase 1).
+
+### D6: CI enforces the anti-slop constraints mechanically
+
+The plan states "every commit typechecks and passes tests" and "no fake data in product code" but provides no enforcement — a human-discipline rule is exactly what failed in `aialytics`. Addition: a GitHub Actions workflow (Node 20, pnpm, `typecheck` + `test` on every push/PR) plus a grep-based anti-slop gate (`Math.random(`, mock/placeholder markers) scoped to product code, exempting `*.test.ts`, `fixtures/`, and marked seed scripts. Sequenced immediately after the scaffold (task group 2) so every subsequent task lands gated. Alternatives considered: pre-commit hooks (complementary but bypassable with `--no-verify`; can be added later), branch protection requiring the CI check (a GitHub setting, not repo code — noted as a manual step).
 
 ## Risks / Trade-offs
 
@@ -47,4 +51,4 @@ The plan's only dry-run instruction was "any small agentic repo" — a hand-wave
 
 ## Open Questions
 
-- Fixture app shape: standalone repo under `fixtures/` in this monorepo vs. a separate scratch repo. Leaning `fixtures/agentic-app-demo/` in-repo (versioned, CI-able) — decide at task group 8.
+- Fixture app shape: standalone repo under `fixtures/` in this monorepo vs. a separate scratch repo. Leaning `fixtures/agentic-app-demo/` in-repo (versioned, CI-able) — decide at task group 9.
