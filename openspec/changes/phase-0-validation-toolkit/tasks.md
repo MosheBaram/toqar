@@ -4,9 +4,9 @@
 
 ## 1. Monorepo scaffold (plan Task 1)
 
-- [ ] 1.1 Write root files: `package.json` (name `toqar`), `pnpm-workspace.yaml`, `tsconfig.base.json`, `README.md` — contents in plan Task 1. Keep the existing `.gitignore` (already committed with the plan's entries plus local-tool-state exclusions); do not overwrite it
-- [ ] 1.2 `pnpm install`; verify lockfile created, no errors
-- [ ] 1.3 Commit `chore: scaffold pnpm workspace monorepo`
+- [x] 1.1 Write root files: `package.json` (name `toqar`), `pnpm-workspace.yaml`, `tsconfig.base.json`, `README.md` — contents in plan Task 1. Keep the existing `.gitignore` (already committed with the plan's entries plus local-tool-state exclusions); do not overwrite it
+- [x] 1.2 `pnpm install`; verify lockfile created, no errors
+- [x] 1.3 Commit `chore: scaffold pnpm workspace monorepo`
 
 ## 2. CI quality gates (addition — design D6, spec quality-gates)
 
