@@ -41,11 +41,11 @@
 
 ## 7. Concierge instrumentation skill (plan Task 6)
 
-- [ ] 7.1 Write `skills/instrument-agentic-app/SKILL.md` (hard rules, inputs, the four phases with review gate) — contents in plan Task 6
-- [ ] 7.2 Write `templates/tracking-plan-intro.md` (three-questions mapping, added events, privacy, partner review checklist)
-- [ ] 7.3 Write `templates/pr-body.md`
-- [ ] 7.4 Write `templates/analytics-wrapper.ts` (self-contained, fire-and-forget, env-var kill switch, one typed function per event)
-- [ ] 7.5 Commit `feat(skill): concierge instrumentation skill with templates`
+- [x] 7.1 Write `skills/instrument-agentic-app/SKILL.md` (hard rules, inputs, the four phases with review gate) — contents in plan Task 6
+- [x] 7.2 Write `templates/tracking-plan.md` (three-questions mapping, added events, privacy, partner review checklist)
+- [x] 7.3 Write `templates/pr-body.md`
+- [x] 7.4 Write `templates/analytics-wrapper.ts` (self-contained, fire-and-forget, env-var kill switch, one typed function per event)
+- [x] 7.5 Commit `feat(skill): concierge instrumentation skill with templates`
 
 ## 8. Validation ops kit (plan Task 7)
 
