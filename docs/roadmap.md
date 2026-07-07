@@ -11,16 +11,31 @@ Main specs in `openspec/specs/` are the contract for what exists today:
 `validation-ops`, `quality-gates`.
 
 ```
- TODAY ──▶ Phase 0.5 ──G1──▶ Phase 1 (6 changes) ──G2──▶ Phase 2 ──G3──▶ SHIPPED
-           validation        platform core              closed loop + GA
-           + design D1       + design D2                + design D3
+ TODAY ──▶ Phase 1 (6 changes) ──G2──▶ Phase 2 ──G3──▶ SHIPPED
+           platform core              closed loop + GA
+           + design D2                + design D3
+   ║
+   ╚═ parallel: Phase 0.5 validation (design partners) — G1 signals
+      steer positioning and priorities; they no longer gate the build
 ```
+
+## Amendment log
+
+- **2026-07-07 — founder decision: build before validation.** Phase 1
+  starts now, ahead of the design-partner test. G1 is demoted from build
+  gate to steering signal (see the amended gate text below). Design D2
+  is unlocked. Recorded deliberately: this inverts the original
+  "validation gates platform code" rule from the aialytics autopsy — the
+  risk accepted is building on unvalidated demand; the mitigations kept
+  are specs-first changes, the quality gates, and running validation in
+  parallel so the steering signals still arrive.
 
 ---
 
-## Phase 0.5 — Run the validation (now, weeks 0–8)
+## Phase 0.5 — Run the validation (parallel track, weeks 0–8)
 
-No platform code. The work is operational and lives in `docs/validation/`.
+The work is operational and lives in `docs/validation/`. *Amended
+2026-07-07: runs in parallel with Phase 1 rather than ahead of it.*
 
 | # | Work | Deliverable |
 | --- | --- | --- |
@@ -31,16 +46,17 @@ No platform code. The work is operational and lives in `docs/validation/`.
 | 0.5.5 | **Design D1** (parallel): brand foundation + report template via Claude Design — see `docs/design/claude-design-prompts.md`, Prompt D1 | Claude Design project `toqar-brand`; tokens adopted by weekly reports |
 | 0.5.6 | Week-6 exit interviews: Sean Ellis + WTP number | `scorecard.md` final row |
 
-**Gate G1 (week 6–8, from `docs/validation/scorecard.md`):**
+**Gate G1 (week 6–8, from `docs/validation/scorecard.md`) — amended
+2026-07-07: a steering signal, no longer the Phase 1 build gate:**
 
-- A1 red (≤2/5 PRs merged) → stop; autopsy; no Phase 1.
-- A2 red (≤1/5 partners with ≥2 unprompted questions) → consulting gig, not company; decide before writing any platform code.
-- A3 <25% agent-shaped → keep the tech, pivot positioning to "better Mixpanel client"; re-plan Phase 1 scope before starting.
-- **G1 green = WTP ≥2 partners at ≥$200/mo AND A1/A2 not red → open Phase 1.**
+- A1 red (≤2/5 PRs merged) → the instrumentation wedge fails; pause the instrumentation-agent change (1.2) and rework the skill before productizing it.
+- A2 red (≤1/5 partners with ≥2 unprompted questions) → insights don't pull; company-vs-consulting decision, now made with platform sunk cost on the table — treat as a stop-and-decide moment for Phase 1 spend.
+- A3 <25% agent-shaped → keep the tech, pivot positioning to "better Mixpanel client"; re-scope remaining Phase 1 changes before continuing.
+- **G1 green = WTP ≥2 partners at ≥$200/mo AND A1/A2 not red → conviction confirmed; continue as planned.**
 
 ---
 
-## Phase 1 — Platform core (entry: G1 green)
+## Phase 1 — Platform core (entry: founder decision, 2026-07-07 — see amendment log)
 
 Six changes, strict order (each depends on its predecessors). Per change:
 run `/opsx:new`, write full specs from the sketch below, implement via the
@@ -162,15 +178,16 @@ Ready-to-run prompts live in `docs/design/claude-design-prompts.md`.
 | ID | When | Scope | Feeds |
 | --- | --- | --- | --- |
 | **D1** | Now (parallel to validation) | Brand foundation: wordmark direction, palette, type scale, spacing tokens; weekly-report component set | Weekly Slack/email reports; public schema spec page; repo README |
-| **D2** | After G1, **before** change 1.5 | Findings-feed design system: finding cards (anomaly, regression, experiment verdict), evidence/query drill-down, registry browser, autonomy dial, onboarding flow | `findings-feed` web app components |
+| **D2** | Unlocked (amendment 2026-07-07), **before** change 1.5 | Findings-feed design system: finding cards (anomaly, regression, experiment verdict), evidence/query drill-down, registry browser, autonomy dial, onboarding flow | `findings-feed` web app components |
 | **D3** | Phase 2, before 2.2 ships | Marketing site, experiment views, benchmark views | GTM surface |
 
 Workflow per design cycle: run the prompt in Claude Design → review/iterate
 there → hand the project output back to this session → we sync it locally
 (`DesignSync`/`/design-sync`) into `design/` and consume tokens/components
-in the relevant change. Design is gated like code: D2 does not start
-before G1 opens, because a polished UI for an unvalidated product is slop
-with good kerning.
+in the relevant change. Design is gated like code: D2 was originally
+gated on G1 ("a polished UI for an unvalidated product is slop with good
+kerning") and was unlocked by the 2026-07-07 amendment together with the
+Phase 1 build; D3 remains gated on Phase 2.
 
 ---
 

@@ -1,8 +1,8 @@
 # Claude Design prompts
 
 Paste-ready prompts for claude.ai/design, one per design cycle in
-`docs/roadmap.md`'s design track. Run **D1 now**; D2 only after gate G1;
-D3 in Phase 2. After each cycle, hand the resulting project back to the
+`docs/roadmap.md`'s design track. Run **D1 now**; D2 unlocked by the
+2026-07-07 roadmap amendment; D3 in Phase 2. After each cycle, hand the resulting project back to the
 Claude Code session — it gets synced locally via `/design-sync` into
 `design/` and consumed by the relevant OpenSpec change.
 
@@ -70,7 +70,7 @@ adopt the tokens.
 
 ---
 
-## Prompt D2 — findings-feed design system (run only after gate G1)
+## Prompt D2 — findings-feed design system (unlocked 2026-07-07)
 
 Create/extend project `toqar-product`, then paste:
 
