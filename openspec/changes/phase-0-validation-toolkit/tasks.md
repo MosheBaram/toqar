@@ -12,15 +12,15 @@
 
 - [x] 2.1 Write `.github/workflows/ci.yml`: on push to main and pull_request — Node 20, pnpm, `pnpm install`, `pnpm typecheck`, `pnpm test`
 - [x] 2.2 Write the anti-slop check (`scripts/anti-slop-check.sh` or equivalent): fail on `Math.random(` or mock/placeholder markers outside `*.test.ts`, `fixtures/`, and marked seed scripts; wire it as a CI step
-- [ ] 2.3 Commit, push, and verify the workflow runs green on GitHub
-- [ ] 2.4 (manual, optional) Enable branch protection on `main` requiring the CI check
+- [x] 2.3 Commit, push, and verify the workflow runs green on GitHub
+- [x] 2.4 (manual, optional) Enable branch protection on `main` requiring the CI check
 
 ## 3. Registry package — event envelope (plan Task 2)
 
-- [ ] 3.1 Scaffold `packages/registry` (`package.json` as `@toqar/registry`, `tsconfig.json`, `vitest.config.ts`) — contents in plan Task 2
-- [ ] 3.2 Write failing test `src/envelope.test.ts`, verify it fails
-- [ ] 3.3 Implement `src/envelope.ts` (`eventEnvelopeSchema`, `agentIdentitySchema`, `SCHEMA_VERSION`); tests green
-- [ ] 3.4 `pnpm typecheck && pnpm test`; commit
+- [x] 3.1 Scaffold `packages/registry` (`package.json` as `@toqar/registry`, `tsconfig.json`, `vitest.config.ts`) — contents in plan Task 2
+- [x] 3.2 Write failing test `src/envelope.test.ts`, verify it fails
+- [x] 3.3 Implement `src/envelope.ts` (`eventEnvelopeSchema`, `agentIdentitySchema`, `SCHEMA_VERSION`); tests green
+- [x] 3.4 `pnpm typecheck && pnpm test`; commit
 
 ## 4. The ten TOQAR core events (plan Task 3)
 
