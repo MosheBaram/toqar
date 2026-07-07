@@ -10,8 +10,8 @@
 
 ## 2. CI quality gates (addition — design D6, spec quality-gates)
 
-- [ ] 2.1 Write `.github/workflows/ci.yml`: on push to main and pull_request — Node 20, pnpm, `pnpm install`, `pnpm typecheck`, `pnpm test`
-- [ ] 2.2 Write the anti-slop check (`scripts/anti-slop-check.sh` or equivalent): fail on `Math.random(` or mock/placeholder markers outside `*.test.ts`, `fixtures/`, and marked seed scripts; wire it as a CI step
+- [x] 2.1 Write `.github/workflows/ci.yml`: on push to main and pull_request — Node 20, pnpm, `pnpm install`, `pnpm typecheck`, `pnpm test`
+- [x] 2.2 Write the anti-slop check (`scripts/anti-slop-check.sh` or equivalent): fail on `Math.random(` or mock/placeholder markers outside `*.test.ts`, `fixtures/`, and marked seed scripts; wire it as a CI step
 - [ ] 2.3 Commit, push, and verify the workflow runs green on GitHub
 - [ ] 2.4 (manual, optional) Enable branch protection on `main` requiring the CI check
 
