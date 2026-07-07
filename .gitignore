@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.env
+.DS_Store
+
+# local tool state
+.claude/settings.local.json
+.omc/
