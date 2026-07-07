@@ -1,0 +1,4 @@
+/* Toqar webfonts — IBM Plex family.
+   UI: IBM Plex Sans. Data/queries/event names: IBM Plex Mono.
+   Loaded from Google Fonts CDN. If self-hosting, replace with local @font-face. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');

@@ -28,3 +28,13 @@ Every number traces to a saved query — link it.}}
 ---
 *Queries: {{link to saved queries — every number in this report is
 reproducible; none are estimated or modeled}}*
+
+## Rendering (brand)
+
+Render styled reports with `skills/toqar-design/report/WeeklyReport.jsx`
+(`email` variant for the full page, `slack` for the compact card); its
+`ReportData` shape maps 1:1 to the sections above. House rules from the
+design system's `readme.md` apply to hand-written reports too: no emoji,
+directionality via ▲ ▼ – and color, event/property names verbatim in
+mono (`task_completed`, never "Task Completed"), `verified` earned /
+`self_reported` neutral, and every number cites its query (`↳ q_…`).

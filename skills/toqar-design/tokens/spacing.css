@@ -1,0 +1,47 @@
+/* ============================================================
+   TOQAR — SPACING & RADIUS
+   Compact 4px-based scale for data-dense surfaces.
+   ============================================================ */
+
+:root {
+  /* Spacing — 4px base, tight low end for tables/badges */
+  --space-0:  0;
+  --space-px: 1px;
+  --space-1:  2px;
+  --space-2:  4px;
+  --space-3:  6px;
+  --space-4:  8px;
+  --space-5:  12px;
+  --space-6:  16px;
+  --space-7:  20px;
+  --space-8:  24px;
+  --space-9:  32px;
+  --space-10: 40px;
+  --space-11: 48px;
+  --space-12: 64px;
+
+  /* Radius — small, precise; nothing pill-soft except chips */
+  --radius-0:  0;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* Borders */
+  --border-width: 1px;
+  --border-width-strong: 1.5px;
+
+  /* Elevation — restrained, cool-tinted (instrument, not floaty) */
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06);
+  --shadow-md: 0 1px 2px hsl(var(--shadow-color) / 0.06),
+               0 4px 12px hsl(var(--shadow-color) / 0.08);
+  --shadow-lg: 0 2px 4px hsl(var(--shadow-color) / 0.06),
+               0 12px 32px hsl(var(--shadow-color) / 0.12);
+
+  /* Motion — calm, quick, no bounce */
+  --ease-standard: cubic-bezier(0.2, 0, 0.1, 1);  /* @kind other */
+  --dur-fast: 90ms;   /* @kind other */
+  --dur-base: 150ms;  /* @kind other */
+}
