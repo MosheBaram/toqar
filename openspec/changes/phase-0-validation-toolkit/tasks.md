@@ -24,9 +24,9 @@
 
 ## 4. The ten TOQAR core events (plan Task 3)
 
-- [ ] 4.1 Write failing test `src/events.test.ts` (ten event names, valid/invalid payloads, discriminator routing), verify it fails
-- [ ] 4.2 Implement `src/events.ts` (ten schemas, `toqarEventSchema` union, `TOQAR_EVENT_NAMES`) and `src/index.ts`; tests green
-- [ ] 4.3 `pnpm typecheck && pnpm test`; commit
+- [x] 4.1 Write failing test `src/events.test.ts` (ten event names, valid/invalid payloads, discriminator routing), verify it fails
+- [x] 4.2 Implement `src/events.ts` (ten schemas, `toqarEventSchema` union, `TOQAR_EVENT_NAMES`) and `src/index.ts`; tests green
+- [x] 4.3 `pnpm typecheck && pnpm test`; commit
 
 ## 5. Registry entries and tracking-plan diff (plan Task 4)
 
