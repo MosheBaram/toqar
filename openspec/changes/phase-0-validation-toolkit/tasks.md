@@ -30,9 +30,9 @@
 
 ## 5. Registry entries and tracking-plan diff (plan Task 4)
 
-- [ ] 5.1 Write failing test `src/tracking-plan.test.ts` (schema validation, markdown rendering, empty-section omission), verify it fails
-- [ ] 5.2 Implement `src/tracking-plan.ts` (`registryEntrySchema`, `plannedEventSchema`, `trackingPlanSchema`, `renderTrackingPlan`); export from index; tests green
-- [ ] 5.3 `pnpm typecheck && pnpm test`; commit
+- [x] 5.1 Write failing test `src/tracking-plan.test.ts` (schema validation, markdown rendering, empty-section omission), verify it fails
+- [x] 5.2 Implement `src/tracking-plan.ts` (`registryEntrySchema`, `plannedEventSchema`, `trackingPlanSchema`, `renderTrackingPlan`); export from index; tests green
+- [x] 5.3 `pnpm typecheck && pnpm test`; commit
 
 ## 6. Public schema spec (plan Task 5)
 
