@@ -1,0 +1,108 @@
+{
+  "repo": "fixtures/agentic-app-demo",
+  "generated_at": "2026-07-07T13:30:00.000Z",
+  "summary": "Wire 9 of the 10 TOQAR core events into the reply_to_lead loop (feedback_given is excluded: the fixture has no user-feedback seam, and an event with no real emission site does not ship). Makes the three intake questions answerable: autonomy rate, cost per sent reply, and reviewer edit magnitude.",
+  "added": [
+    {
+      "event": "task_started",
+      "description": "A reply_to_lead task begins when the agent picks up a lead.",
+      "journey": "lead_outreach",
+      "owner_metric": "task_success_rate",
+      "hypothesis": "Baseline volume denominator for all three intake questions.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/agent.ts:13"],
+      "implementation_notes": "Emit at the top of replyToLead; task_id from leadId, run_id generated per invocation; lead content only as input_ref (lead id), never the lead fields."
+    },
+    {
+      "event": "step_executed",
+      "description": "Each step of the run: CRM lookup (tool_call), draft generation (llm_call), email send (tool_call).",
+      "journey": "lead_outreach",
+      "owner_metric": "per_tool_failure_rate",
+      "hypothesis": "Cost per sent reply (Q2) needs tokens/latency per llm_call; tool failures explain failed tasks.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/agent.ts:15", "src/agent.ts:17", "src/agent.ts:35"],
+      "implementation_notes": "tool_name crm_lookup / email_send; model and token usage from the messages.create response; status error on thrown exceptions."
+    },
+    {
+      "event": "task_completed",
+      "description": "Reply sent. Provider ack (messageId) upgrades verification to verified.",
+      "journey": "lead_outreach",
+      "owner_metric": "task_success_rate",
+      "hypothesis": "Q2 cost per sent reply: cost_usd summed across the run divided by completions.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/agent.ts:36"],
+      "implementation_notes": "verification=verified, verifier=email_provider_ack; duration from startedAt; output only as output_ref (messageId)."
+    },
+    {
+      "event": "task_failed",
+      "description": "Empty draft or a thrown error (CRM miss, API failure) fails the task.",
+      "journey": "lead_outreach",
+      "owner_metric": "task_success_rate",
+      "hypothesis": "Failure share and error taxonomy for the success-rate denominator.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/agent.ts:30", "src/agent.ts:39"],
+      "implementation_notes": "error.type from the caught error class (e.g. crm_lookup_failed, empty_draft); retryable=true for transient API errors."
+    },
+    {
+      "event": "task_abandoned",
+      "description": "Reviewer declines the draft; the task is walked away from.",
+      "journey": "lead_outreach",
+      "owner_metric": "abandonment_rate",
+      "hypothesis": "Distinguishes reviewer rejection from technical failure in the denominator.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/agent.ts:33"],
+      "implementation_notes": "abandoned_by=human, reason=approval_declined."
+    },
+    {
+      "event": "handoff_to_human",
+      "description": "Draft goes to the reviewer for approval before sending.",
+      "journey": "lead_outreach",
+      "owner_metric": "autonomy_rate",
+      "hypothesis": "Q1: share of replies sent with zero human touch — this event is the numerator's complement.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/agent.ts:32"],
+      "implementation_notes": "reason=approval_required, blocking=true; draft travels as context_ref, never inline."
+    },
+    {
+      "event": "human_approved",
+      "description": "Reviewer approves the draft.",
+      "journey": "lead_outreach",
+      "owner_metric": "approval_friction",
+      "hypothesis": "response_latency_ms distribution shows where review is the bottleneck.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/approval.ts:16"],
+      "implementation_notes": "response_latency_ms from respondedInMs; emit in the approval callback."
+    },
+    {
+      "event": "human_edited",
+      "description": "Reviewer changed the draft before approving (edited=true, finalText differs).",
+      "journey": "lead_outreach",
+      "owner_metric": "human_edit_distance",
+      "hypothesis": "Q3: how often and how much the reviewer rewrites drafts.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/approval.ts:16"],
+      "implementation_notes": "artifact_type=email_draft; edit_magnitude in chars = diff(draft, finalText); texts themselves never captured."
+    },
+    {
+      "event": "human_overrode",
+      "description": "Reviewer discards the agent draft entirely and writes their own (approved=false path when they take over).",
+      "journey": "lead_outreach",
+      "owner_metric": "override_rate",
+      "hypothesis": "Trust indicator: overrides falling over time is the PMF signal.",
+      "status": "proposed",
+      "since_version": "0.1.0",
+      "code_locations": ["src/agent.ts:33"],
+      "implementation_notes": "Emit alongside task_abandoned when the reviewer replaces rather than declines; reason free-text enum from the approval UI."
+    }
+  ],
+  "modified": [],
+  "removed": []
+}
