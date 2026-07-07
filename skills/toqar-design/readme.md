@@ -112,6 +112,9 @@ Root files:
 - `explorations/` — archived logo + primary-color option rounds.
 - `guidelines/` — foundation specimen cards (Colors, Type, Spacing, Tokens, Brand).
 - `components/data/` — reusable data primitives.
+- `components/feed/`, `components/evidence/`, `components/slack/`,
+  `components/controls/` — product-surface components (D2).
+- `ui_kits/app/` — the Toqar web app screens (feed, registry, onboarding).
 - `report/` — the weekly insight report component + cards.
 - `SKILL.md` — Agent-Skill wrapper so this system is usable in Claude Code.
 
@@ -126,6 +129,28 @@ Root files:
   property name (`step_executed`).
 - **WeeklyReport** (`report/WeeklyReport.jsx`) — partner insight report,
   `email` (PDF) and `slack` (compact) variants, composing all four primitives.
+- **FindingCard** (`components/feed/FindingCard.jsx`) — the core feed unit;
+  variants: anomaly / regression / experiment verdict / weekly digest. Also
+  exports **LayerKey** (TOQAR accent square).
+- **Sparkline** (`components/feed/Sparkline.jsx`) — tiny axis-less trend line.
+- **EvidenceDrilldown** (`components/evidence/EvidenceDrilldown.jsx`) — the
+  expanded finding: step-by-step investigation chain with copyable queries.
+- **SlackFinding** (`components/slack/SlackFinding.jsx`) — a finding translated
+  to Slack Block Kit constraints.
+- **AutonomyDial** (`components/controls/AutonomyDial.jsx`) — the per-customer
+  permission ladder: read-only analysis → instrumentation PRs → experiment PRs.
+
+### App screens (`ui_kits/app/`)
+The product surface is a FEED OF AGENT FINDINGS, not a dashboard grid. Screens
+share `appshell.jsx` (top bar, nav, tenant chip, ◐ theme toggle):
+- `feed.html` — findings stream with TOQAR/severity/task filters; “show the
+  work” expands the evidence drill-down inline.
+- `feed-empty.html` — fresh-tenant empty state (honest sweep status).
+- `registry.html` — the event registry as shared contract (per-event record:
+  description, journey, owner_metric, hypothesis, status, since_version,
+  code_locations).
+- `onboarding.html` — connect repo → review agent-proposed tracking plan
+  (diff table, three-questions mapping, per-event detail) → data flowing.
 
 ### Fonts
 IBM Plex Sans + IBM Plex Mono are loaded via the Google Fonts CDN in
