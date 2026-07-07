@@ -58,7 +58,7 @@
 
 ## 9. Fixture app and skill dry-run (addition — design D4)
 
-- [ ] 9.1 Create `fixtures/agentic-app-demo/`: a minimal TS agentic app with one `anthropic.messages.create` call, one tool call, one human-approval seam, and planted sensitive content (PII bait) — clearly marked as a fixture, excluded from workspace packages
-- [ ] 9.2 Dry-run `/instrument-agentic-app` against the fixture; confirm it stops at the review gate with no code written
-- [ ] 9.3 Validate the produced tracking plan against `trackingPlanSchema`; confirm seam anchors are real `file:line`s and PII bait appears only behind `*_ref` pointers
-- [ ] 9.4 Record dry-run results and any skill fixes in `skills/instrument-agentic-app/` (iterate until the plan is clean); commit
+- [x] 9.1 Create `fixtures/agentic-app-demo/`: a minimal TS agentic app with one `anthropic.messages.create` call, one tool call, one human-approval seam, and planted sensitive content (PII bait) — clearly marked as a fixture, excluded from workspace packages
+- [x] 9.2 Dry-run `/instrument-agentic-app` against the fixture; confirm it stops at the review gate with no code written
+- [x] 9.3 Validate the produced tracking plan against `trackingPlanSchema`; confirm seam anchors are real `file:line`s and PII bait appears only behind `*_ref` pointers
+- [x] 9.4 Record dry-run results and any skill fixes in `skills/instrument-agentic-app/` (iterate until the plan is clean); commit
