@@ -36,8 +36,8 @@
 
 ## 6. Public schema spec (plan Task 5)
 
-- [ ] 6.1 Write `packages/registry/README.md`: primitives, the ten events, the five TOQAR layers with metric derivations, status section — contents in plan Task 5
-- [ ] 6.2 Cross-check every documented event against `TOQAR_EVENT_NAMES`; no aspirational claims; commit
+- [x] 6.1 Write `packages/registry/README.md`: primitives, the ten events, the five TOQAR layers with metric derivations, status section — contents in plan Task 5
+- [x] 6.2 Cross-check every documented event against `TOQAR_EVENT_NAMES`; no aspirational claims; commit
 
 ## 7. Concierge instrumentation skill (plan Task 6)
 
