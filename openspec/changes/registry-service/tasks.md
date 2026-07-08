@@ -4,10 +4,10 @@
 
 ## 1. Service package scaffold and test infrastructure
 
-- [ ] 1.1 Scaffold `packages/registry-service` (`@toqar/registry-service`, strict tsconfig extending base, vitest config; deps: `fastify`, `postgres`, `zod`, workspace `@toqar/registry`; dev: `@electric-sql/pglite`)
-- [ ] 1.2 Implement `SqlExecutor` seam (D1): interface + PGlite test binding + `postgres` production binding; failing-then-green test proving both run the same trivial query and transaction
-- [ ] 1.3 Migration runner (D2): numbered `.sql` files, `migrations` bookkeeping table; test: applying twice is idempotent
-- [ ] 1.4 Commit, PR, merge
+- [x] 1.1 Scaffold `packages/registry-service` (`@toqar/registry-service`, strict tsconfig extending base, vitest config; deps: `fastify`, `postgres`, `zod`, workspace `@toqar/registry`; dev: `@electric-sql/pglite`)
+- [x] 1.2 Implement `SqlExecutor` seam (D1): interface + PGlite test binding + `postgres` production binding; failing-then-green test proving both run the same trivial query and transaction (runtime test covers the PGlite binding; the `postgres` binding shares the interface and is compile-checked + smoke-scripted per D1 risk note)
+- [x] 1.3 Migration runner (D2): plain-SQL migrations as ordered `{id, sql}` records (SQL stays visible; TS modules instead of loose `.sql` files so builds need no asset copying), `migrations` bookkeeping table; test: applying twice is idempotent
+- [x] 1.4 Commit, PR, merge
 
 ## 2. Store: tenants, entries, audit (spec: registry-backend)
 
