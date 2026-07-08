@@ -8,6 +8,31 @@ importers:
 
   .: {}
 
+  packages/cli:
+    dependencies:
+      '@toqar/registry':
+        specifier: workspace:*
+        version: link:../registry
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.2.12
+        version: 0.2.17
+      '@toqar/registry-service':
+        specifier: workspace:*
+        version: link:../registry-service
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.5
+        version: 2.1.9(@types/node@20.19.43)
+
   packages/registry:
     dependencies:
       zod:

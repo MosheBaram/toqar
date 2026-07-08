@@ -28,12 +28,12 @@
 
 ## 4. Sync CLI (spec: registry-sync)
 
-- [ ] 4.1 Scaffold `packages/cli` (`@toqar/cli`, bin `toqar`; deps: workspace `@toqar/registry`)
-- [ ] 4.2 TDD file loader: `analytics/registry.json` parsing, per-index validation errors, duplicate-event detection (Invalid-file scenario)
-- [ ] 4.3 TDD diff engine: local vs backend → `TrackingPlan` (added/modified/removed) + fingerprint; scenarios: drift-shown, in-sync
-- [ ] 4.4 TDD `toqar sync`: renders plan via `renderTrackingPlan`, exit codes (0 in-sync, designated code on diff), env-var config, missing-credentials scenario, token never printed
-- [ ] 4.5 TDD `--apply` (posts plan + fingerprint, reports counts, 409 stale handling) and `--pull` (stable-sorted file write); mutual exclusivity
-- [ ] 4.6 Commit, PR, merge
+- [x] 4.1 Scaffold `packages/cli` (`@toqar/cli`, bin `toqar`; deps: workspace `@toqar/registry`)
+- [x] 4.2 TDD file loader: `analytics/registry.json` parsing, per-index validation errors, duplicate-event detection (Invalid-file scenario)
+- [x] 4.3 TDD diff engine: local vs backend → `TrackingPlan` (added/modified/removed) + fingerprint; scenarios: drift-shown, in-sync (added/modified anchor `code_locations` to the registry file itself — the honest declaration site; deprecated-remotely events absent locally are not re-removed)
+- [x] 4.4 TDD `toqar sync`: renders plan via `renderTrackingPlan`, exit codes (0 in-sync, 2 diff present, 1 error), env-var config, missing-credentials scenario, token never printed
+- [x] 4.5 TDD `--apply` (posts plan + fingerprint, reports counts, 409 stale handling) and `--pull` (stable-sorted file write); mutual exclusivity (parser extracted to `args.ts` for testability; tests run over real HTTP against the service on an ephemeral port via a new `@toqar/registry-service/testing` subpath export of the PGlite binding)
+- [x] 4.6 Commit, PR, merge
 
 ## 5. End-to-end verification and close-out
 
