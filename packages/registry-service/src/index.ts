@@ -1,3 +1,6 @@
 export * from './db/executor.js';
 export * from './db/migrate.js';
+export * from './db/migrations.js';
 export * from './db/postgres.js';
+export * from './store.js';
+export * from './taxonomy.js';

@@ -11,12 +11,12 @@
 
 ## 2. Store: tenants, entries, audit (spec: registry-backend)
 
-- [ ] 2.1 Migration 001: `tenants` (id, name, token_hash), `registry_entries` (tenant-scoped, unique per event), `audit_log` (append-only)
-- [ ] 2.2 TDD `RegistryStore.createTenant`: seeds the ten TOQAR core events as `active` at `SCHEMA_VERSION` (Default-taxonomy scenario)
-- [ ] 2.3 TDD entry CRUD: round-trip scenario; invalid payload rejected before SQL (Edge-validation scenario)
-- [ ] 2.4 TDD `applyPlan`: atomic add/modify/deprecate with fingerprint stale-check (D4, D5); scenarios: applied-atomically, bad-plan-rejected-whole
-- [ ] 2.5 TDD audit trail: one record per affected entry, newest-first listing, no mutation path (Mutations-audited scenario)
-- [ ] 2.6 Commit, PR, merge
+- [x] 2.1 Migration 001: `tenants` (id, name, token_hash), `registry_entries` (tenant-scoped, unique per event), `audit_log` (append-only)
+- [x] 2.2 TDD `RegistryStore.createTenant`: seeds the ten TOQAR core events as `active` at `SCHEMA_VERSION` (Default-taxonomy scenario)
+- [x] 2.3 TDD entry CRUD: round-trip scenario; invalid payload rejected before SQL (Edge-validation scenario)
+- [x] 2.4 TDD `applyPlan`: atomic add/modify/deprecate with fingerprint stale-check (D4, D5); scenarios: applied-atomically, bad-plan-rejected-whole
+- [x] 2.5 TDD audit trail: one record per affected entry, newest-first listing, no mutation path (Mutations-audited scenario)
+- [x] 2.6 Commit, PR, merge
 
 ## 3. HTTP API (spec: registry-backend)
 
