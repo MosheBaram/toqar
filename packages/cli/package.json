@@ -1,18 +1,11 @@
 {
-  "name": "@toqar/registry-service",
+  "name": "@toqar/cli",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./testing": {
-      "types": "./dist/db/pglite.d.ts",
-      "default": "./dist/db/pglite.js"
-    }
+  "bin": {
+    "toqar": "dist/bin.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -21,12 +14,11 @@
   },
   "dependencies": {
     "@toqar/registry": "workspace:*",
-    "fastify": "^4.28.1",
-    "postgres": "^3.4.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.12",
+    "@toqar/registry-service": "workspace:*",
     "@types/node": "^20.14.0",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
