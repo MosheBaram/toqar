@@ -16,6 +16,9 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Workspace packages resolve each other's types from dist/ — build
+      # topologically before typechecking dependents.
+      - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
       - name: Anti-slop check
