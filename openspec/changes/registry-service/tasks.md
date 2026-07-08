@@ -20,11 +20,11 @@
 
 ## 3. HTTP API (spec: registry-backend)
 
-- [ ] 3.1 TDD auth preHandler: bearer → tenant via token hash; 401 scenarios; route shape carries no tenant id (D3)
-- [ ] 3.2 TDD routes: `GET/PUT /v1/registry/events[/:event]`, `POST /v1/registry/apply`, `GET /v1/registry/audit` — wired to the store, zod at the boundary
-- [ ] 3.3 TDD cross-tenant isolation scenario: tenant A token cannot reach tenant B data by any route shape
-- [ ] 3.4 TDD `GET /health`: truthful DB reachability (Degraded-database scenario)
-- [ ] 3.5 Service README documenting routes, env vars, and the real-Postgres smoke script (D1 risk mitigation); commit, PR, merge
+- [x] 3.1 TDD auth preHandler: bearer → tenant via token hash; 401 scenarios; route shape carries no tenant id (D3)
+- [x] 3.2 TDD routes: `GET/PUT /v1/registry/events[/:event]`, `POST /v1/registry/apply`, `GET /v1/registry/audit` — wired to the store, zod at the boundary (list response also carries the fingerprint so the CLI diffs from one fetch)
+- [x] 3.3 TDD cross-tenant isolation scenario: tenant A token cannot reach tenant B data by any route shape
+- [x] 3.4 TDD `GET /health`: truthful DB reachability (Degraded-database scenario)
+- [x] 3.5 Service README documenting routes, env vars, and the real-Postgres smoke script (D1 risk mitigation); commit, PR, merge
 
 ## 4. Sync CLI (spec: registry-sync)
 
