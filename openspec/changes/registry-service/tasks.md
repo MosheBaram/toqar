@@ -37,6 +37,6 @@
 
 ## 5. End-to-end verification and close-out
 
-- [ ] 5.1 E2E test: PGlite-backed service instance + CLI against a temp repo dir — create tenant → pull (ten TOQAR events) → add a product event locally → sync (diff shown) → apply → re-sync in-sync (registry-sync Apply-round-trip scenario)
-- [ ] 5.2 Root README: move registry-service and cli into "What exists today" only with what they verifiably do
-- [ ] 5.3 `openspec validate registry-service --strict`; full gates green; commit, PR, merge
+- [x] 5.1 E2E test: PGlite-backed service instance + CLI against a temp repo dir — create tenant → pull (ten TOQAR events) → add a product event locally → sync (diff shown) → apply → re-sync in-sync (registry-sync Apply-round-trip scenario). Satisfied by `packages/cli/src/sync.test.ts`, which runs exactly this sequence over real HTTP (service on an ephemeral port, temp dir) — a separate e2e file would duplicate it verbatim
+- [x] 5.2 Root README: move registry-service and cli into "What exists today" only with what they verifiably do
+- [x] 5.3 `openspec validate registry-service --strict`; full gates green; commit, PR, merge
