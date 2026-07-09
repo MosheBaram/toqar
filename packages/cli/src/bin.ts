@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from './args.js';
+import { runInstrument } from './instrument.js';
 import { runSync } from './sync.js';
 
 const parsed = parseArgs(process.argv);
@@ -8,10 +9,15 @@ if (typeof parsed === 'string') {
   process.exit(1);
 }
 
-const result = await runSync({
-  ...parsed,
+const env = {
   apiUrl: process.env.TOQAR_API_URL,
   token: process.env.TOQAR_TOKEN,
-});
+};
+
+const result =
+  parsed.cmd === 'sync'
+    ? await runSync({ mode: parsed.mode, filePath: parsed.filePath, ...env })
+    : await runInstrument({ repoPath: parsed.path, approve: parsed.approve, ...env });
+
 console.log(result.output);
 process.exit(result.code);

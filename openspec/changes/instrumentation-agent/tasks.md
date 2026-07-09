@@ -25,6 +25,6 @@
 
 ## 4. CLI + end-to-end
 
-- [ ] 4.1 `toqar instrument <path>` wiring the core (env creds, approval prompt at the review gate)
-- [ ] 4.2 E2E against the fixture app: map → plan proposed in backend → approve → PR-shaped diff produced → host checks green; second run reuses seam map scenario
-- [ ] 4.3 README (honest scope: TS + React + Express), root README entry; `openspec validate --strict`; commit, PR, merge
+- [x] 4.1 `toqar instrument <path>` wiring the core (env creds, approval prompt at the review gate)
+- [x] 4.2 E2E against the fixture app: map → plan proposed in backend → approve → PR-shaped diff produced → host checks green; second run reuses seam map scenario
+- [x] 4.3 README (honest scope: TS + React + Express), root README entry; `openspec validate --strict`; commit, PR, merge

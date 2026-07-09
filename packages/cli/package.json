@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@toqar/registry": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@toqar/instrumentation-agent": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.12",
