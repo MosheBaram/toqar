@@ -22,6 +22,13 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
 - `packages/collector` — authenticated validating event intake (per-item
   202 semantics, rejection accounting) plus OTLP/HTTP trace intake mapped
   to TOQAR events; buffered publishing rides broker outages.
+- `packages/analysis-agent` — playbooks over the semantic layer, honest
+  sweeps, the question-log eval harness, Slack Block Kit delivery, and
+  the automated weekly digest — every published number cited.
+- `packages/mcp-server` — read-only MCP surface for customers' own
+  agents: metrics with citations, findings, registry.
+- `apps/web` — the findings feed (filters, evidence drill-down, registry
+  browser, audited autonomy dial) on the design-system tokens.
 - `packages/analysis` — the deterministic layer: 21 TOQAR metrics as
   parameterized ClickHouse SQL with content-hashed citation ids, plus
   pure statistical primitives (anomaly, changepoint, segmentation,
