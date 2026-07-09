@@ -13,12 +13,21 @@ export interface RunRecord {
   started_at: string;
 }
 
+export interface SeamChanges {
+  /** True when a prior seam map existed for this repo. */
+  reused: boolean;
+  added: string[];
+  removed: string[];
+}
+
 export type RunResult =
   | {
       status: 'plan_proposed';
       plan: TrackingPlan;
       rendered: string;
       seamMap: SeamMap;
+      /** How this run's seams compare to the stored map (spec: second run reuses context). */
+      seamChanges: SeamChanges;
       /** Model review of the deterministic plan — advisory, for the human reviewer. */
       suggestions?: string;
       runRecord: RunRecord;
@@ -55,6 +64,15 @@ export async function runInstrumentation(opts: RunOptions): Promise<RunResult> {
   }
 
   const client = createServiceClient(opts.apiUrl, opts.token);
+  const previous = await client.getSeamMap(opts.repo);
+  const prevLocations = new Set(previous?.seams.map((s) => `${s.kind}@${s.location}`) ?? []);
+  const newLocations = new Set(scan.seamMap.seams.map((s) => `${s.kind}@${s.location}`));
+  const seamChanges = {
+    reused: previous !== null,
+    added: [...newLocations].filter((l) => !prevLocations.has(l)),
+    removed: [...prevLocations].filter((l) => !newLocations.has(l)),
+  };
+
   const { entries } = await client.fetchRegistry();
   const plan = buildInstrumentationPlan({
     seamMap: scan.seamMap,
@@ -87,6 +105,7 @@ export async function runInstrumentation(opts: RunOptions): Promise<RunResult> {
     plan,
     rendered: renderTrackingPlan(plan),
     seamMap: scan.seamMap,
+    seamChanges,
     ...(suggestions === undefined ? {} : { suggestions }),
     runRecord: {
       tokens_in: usage.input_tokens,

@@ -10,9 +10,13 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
 - `packages/registry-service` — tenant-scoped registry backend (Fastify +
   Postgres): TOQAR taxonomy seeded per tenant, atomic tracking-plan
   application, append-only audit trail. Tests run on in-process Postgres.
-- `packages/cli` — `toqar sync`: registry-as-code. Diffs
-  `analytics/registry.json` against the backend, renders the diff as a
-  tracking plan, applies or pulls.
+- `packages/cli` — `toqar sync` (registry-as-code diff/apply/pull) and
+  `toqar instrument <path>` (agent-driven instrumentation with a hard
+  review gate).
+- `packages/instrumentation-agent` — the productized concierge: seam
+  scanning, plan proposal, seam maps compounding in the backend,
+  approved-plan implementation with host verification, PR assembly, and
+  recorded merge rate. TS/Express/React/LLM-SDK repos; refuses others.
 - `skills/instrument-agentic-app` — Claude Code skill that instruments a
   design partner's repo with TOQAR events via PR.
 - `skills/toqar-design` — the Toqar design system (brand tokens, data

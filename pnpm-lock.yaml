@@ -10,6 +10,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@toqar/instrumentation-agent':
+        specifier: workspace:*
+        version: link:../instrumentation-agent
       '@toqar/registry':
         specifier: workspace:*
         version: link:../registry
