@@ -17,6 +17,15 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
   scanning, plan proposal, seam maps compounding in the backend,
   approved-plan implementation with host verification, PR assembly, and
   recorded merge rate. TS/Express/React/LLM-SDK repos; refuses others.
+- `packages/sdk` — `@toqar/sdk`: typed fire-and-forget emitters with
+  batching, envelope completion, dev validation, and a kill switch.
+- `packages/collector` — authenticated validating event intake (per-item
+  202 semantics, rejection accounting) plus OTLP/HTTP trace intake mapped
+  to TOQAR events; buffered publishing rides broker outages.
+- `packages/pipeline` — Redpanda → ClickHouse delivery with `event_id`
+  idempotency; dev stack in `infra/docker-compose.yml`, exercised by a
+  real-pipe integration CI job. Production deploy is a documented runbook
+  awaiting an operator (see `packages/pipeline/README.md`).
 - `skills/instrument-agentic-app` — Claude Code skill that instruments a
   design partner's repo with TOQAR events via PR.
 - `skills/toqar-design` — the Toqar design system (brand tokens, data

@@ -33,5 +33,5 @@
 
 ## 5. Deploy + close-out
 
-- [ ] 5.1 Provision the VM (D1), compose up, backups off-box, collector DNS + TLS; smoke: SDK → queryable row
-- [ ] 5.2 Runbook README (deploy, backup restore, buffer limits); root README update; `openspec validate --strict`; commit, PR, merge
+- [ ] 5.1 Provision the VM (D1), compose up, backups off-box, collector DNS + TLS; smoke: SDK → queryable row — **operator-blocked**: needs a cloud provider account/credentials; procedure documented in packages/pipeline/README.md
+- [x] 5.2 Runbook README (deploy, backup restore, buffer limits); root README update; `openspec validate --strict`; commit, PR, merge
