@@ -219,11 +219,14 @@ export function compileMetric(name: string, args: MetricArgs): MetricQuery {
   if (groupCols) sql += ` GROUP BY ${groupCols}`;
   if (def.outer) sql = def.outer(sql).replace(' GROUP_BY_MARKER', '');
 
+  // ClickHouse DateTime64 params reject the ISO trailing Z — normalize to
+  // its canonical form; the citation record carries what actually executed.
+  const ts = (iso: string) => iso.replace('T', ' ').replace(/Z$/, '');
   const params: Record<string, string> = {
     tenantId: args.tenantId,
-    from: args.from,
-    to: args.to,
-    ...(def.needsPivot && args.pivot ? { pivot: args.pivot } : {}),
+    from: ts(args.from),
+    to: ts(args.to),
+    ...(def.needsPivot && args.pivot ? { pivot: ts(args.pivot) } : {}),
   };
 
   const id = `q_${createHash('sha256').update(sql + JSON.stringify(params)).digest('hex').slice(0, 16)}`;

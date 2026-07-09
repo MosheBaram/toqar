@@ -32,6 +32,20 @@ export async function ensureSchema(ch: ClickHouseClient): Promise<void> {
       ORDER BY (tenant_id, event_id)
     `,
   });
+  // Citation records: every executed metric query, resolvable by q_ id.
+  await ch.command({
+    query: `
+      CREATE TABLE IF NOT EXISTS toqar.executed_queries (
+        query_id    String,
+        metric      String,
+        sql         String,
+        params      String,
+        executed_at DateTime64(3, 'UTC')
+      )
+      ENGINE = MergeTree
+      ORDER BY (query_id, executed_at)
+    `,
+  });
 }
 
 export async function insertRows(ch: ClickHouseClient, rows: EventRow[]): Promise<void> {

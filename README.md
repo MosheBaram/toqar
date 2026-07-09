@@ -22,6 +22,10 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
 - `packages/collector` — authenticated validating event intake (per-item
   202 semantics, rejection accounting) plus OTLP/HTTP trace intake mapped
   to TOQAR events; buffered publishing rides broker outages.
+- `packages/analysis` — the deterministic layer: 21 TOQAR metrics as
+  parameterized ClickHouse SQL with content-hashed citation ids, plus
+  pure statistical primitives (anomaly, changepoint, segmentation,
+  correlation). Zero LLM dependencies by construction.
 - `packages/pipeline` — Redpanda → ClickHouse delivery with `event_id`
   idempotency; dev stack in `infra/docker-compose.yml`, exercised by a
   real-pipe integration CI job. Production deploy is a documented runbook
