@@ -4,9 +4,9 @@
 
 ## 1. Seam-map storage (spec: registry-backend delta)
 
-- [ ] 1.1 Migration 002: `repo_context` (tenant-scoped, repo key, seam-map jsonb, produced_at, agent_version)
-- [ ] 1.2 TDD store + routes: put/get latest seam map, audit append, tenant isolation scenario
-- [ ] 1.3 Commit, PR, merge
+- [x] 1.1 Migration 002: `repo_context` (tenant-scoped, repo key, seam-map jsonb, produced_at, agent_version)
+- [x] 1.2 TDD store + routes: put/get latest seam map, audit append, tenant isolation scenario
+- [x] 1.3 Commit, PR, merge
 
 ## 2. Agent core package
 
