@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   registryEntrySchema,
+  seamMapSchema,
   trackingPlanSchema,
   type RegistryEntry,
+  type SeamMap,
 } from '@toqar/registry';
 import type { ZodIssue } from 'zod';
 import type { SqlExecutor, SqlRunner } from './db/executor.js';
@@ -27,9 +29,10 @@ export class ConflictError extends Error {
 export interface AuditRecord {
   id: number;
   actor: string;
-  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove';
+  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map';
+  /** Registry event name, or the repo for seam-map operations. */
   event: string;
-  diff: { before: RegistryEntry | null; after: RegistryEntry | null };
+  diff: { before: unknown; after: unknown };
   created_at: string;
 }
 
@@ -166,6 +169,44 @@ export class RegistryStore {
     });
   }
 
+  /**
+   * Persists an instrumentation run's seam map (latest wins per repo) and
+   * audits the write — the accumulated-context store (design D3 of the
+   * instrumentation-agent change).
+   */
+  async putSeamMap(tenantId: string, value: unknown, actor: string): Promise<SeamMap> {
+    const parsed = seamMapSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    const map = parsed.data;
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO repo_context (tenant_id, repo, seam_map, agent_version, produced_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (tenant_id, repo) DO UPDATE
+           SET seam_map = $3, agent_version = $4, produced_at = $5, updated_at = now()`,
+        [tenantId, map.repo, JSON.stringify(map), map.agent_version, map.produced_at],
+      );
+      await this.audit(tx, tenantId, actor, 'seam_map', map.repo, null, {
+        agent_version: map.agent_version,
+        produced_at: map.produced_at,
+        seams: map.seams.length,
+        frameworks: map.frameworks,
+      });
+    });
+    return map;
+  }
+
+  async getSeamMap(tenantId: string, repo: string): Promise<SeamMap | null> {
+    const { rows } = await this.db.query(
+      'SELECT seam_map FROM repo_context WHERE tenant_id = $1 AND repo = $2',
+      [tenantId, repo],
+    );
+    if (!rows.length) return null;
+    const parsed = seamMapSchema.safeParse(rows[0]!.seam_map);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    return parsed.data;
+  }
+
   async listAudit(tenantId: string, limit = 100): Promise<AuditRecord[]> {
     const { rows } = await this.db.query(
       'SELECT id, actor, operation, event, diff, created_at FROM audit_log WHERE tenant_id = $1 ORDER BY id DESC LIMIT $2',
@@ -208,8 +249,8 @@ export class RegistryStore {
     actor: string,
     operation: AuditRecord['operation'],
     event: string,
-    before: RegistryEntry | null,
-    after: RegistryEntry | null,
+    before: unknown,
+    after: unknown,
   ): Promise<void> {
     await tx.query(
       'INSERT INTO audit_log (tenant_id, actor, operation, event, diff) VALUES ($1, $2, $3, $4, $5)',

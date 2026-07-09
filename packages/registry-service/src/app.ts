@@ -94,5 +94,17 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return { records };
   });
 
+  app.put('/v1/registry/seam-map', async (req) => {
+    return store.putSeamMap(req.tenantId, req.body, API_ACTOR);
+  });
+
+  app.get<{ Querystring: { repo?: string } }>('/v1/registry/seam-map', async (req, reply) => {
+    const repo = req.query.repo;
+    if (!repo) throw new ValidationError('missing repo query parameter');
+    const map = await store.getSeamMap(req.tenantId, repo);
+    if (!map) return reply.code(404).send({ error: 'not_found' });
+    return map;
+  });
+
   return app;
 }

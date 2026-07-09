@@ -33,4 +33,18 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX audit_log_tenant_idx ON audit_log (tenant_id, id DESC);
     `,
   },
+  {
+    id: '002_repo_context',
+    sql: `
+      CREATE TABLE repo_context (
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        repo text NOT NULL,
+        seam_map jsonb NOT NULL,
+        agent_version text NOT NULL,
+        produced_at timestamptz NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (tenant_id, repo)
+      );
+    `,
+  },
 ];
