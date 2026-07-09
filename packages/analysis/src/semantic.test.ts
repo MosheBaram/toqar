@@ -84,7 +84,8 @@ describe('compiled queries', () => {
   it('regression_delta takes a pivot parameter', () => {
     const q = compileMetric('regression_delta', { ...args, pivot: '2026-07-04T00:00:00.000Z' });
     expect(q.sql).toContain('{pivot:DateTime64(3)}');
-    expect(q.params.pivot).toBe('2026-07-04T00:00:00.000Z');
+    // normalized to ClickHouse's canonical DateTime64 form (no T, no Z)
+    expect(q.params.pivot).toBe('2026-07-04 00:00:00.000');
   });
 
   it('weekly_task_actors documents its session_id proxy honestly', () => {

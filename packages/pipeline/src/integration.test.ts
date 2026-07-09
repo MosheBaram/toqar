@@ -3,8 +3,11 @@ import { BufferedSink, buildCollectorApp } from '@toqar/collector';
 import { migrate, MIGRATIONS, RegistryStore } from '@toqar/registry-service';
 import { createPgliteExecutor } from '@toqar/registry-service/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createClickHouse, ensureSchema } from './clickhouse.js';
+import { compileMetric } from '@toqar/analysis';
+import { createClickHouse, ensureSchema, insertRows } from './clickhouse.js';
+import { createMetricExecutor } from './metric-executor.js';
 import { createRedpandaSink, startEventsConsumer, type ConsumerHandle } from './redpanda.js';
+import { toRow } from './transform.js';
 
 /**
  * Real-pipe verification (spec: stream-pipeline): collector → Redpanda →
@@ -165,5 +168,65 @@ suite('collector → Redpanda → ClickHouse', () => {
     }
     await new Promise((r) => setTimeout(r, 1500));
     expect(await query()).toBe(1);
+  });
+
+  it('semantic-layer arithmetic verifies on real ClickHouse with a citation record', async () => {
+    // Fixture: 6 completed (cost 0.7 each), 3 failed, 1 abandoned → TSR 0.6, CPCT 0.7
+    const arithmeticTenant = `t_arith_${Date.now()}`;
+    const base = {
+      schema_version: SCHEMA_VERSION,
+      run_id: 'run_1',
+      task_type: 'reply_to_lead',
+      agent: { name: 'sdr-agent', version: '1.0.0' },
+      tenant_id: arithmeticTenant,
+    };
+    const mkEvent = (event: string, taskId: string, extra: Record<string, unknown>) =>
+      toRow({
+        ...base,
+        event,
+        event_id: crypto.randomUUID(),
+        timestamp: '2026-07-05T12:00:00.000Z',
+        task_id: taskId,
+        ...extra,
+      })!;
+
+    const rows = [
+      ...Array.from({ length: 6 }, (_, i) =>
+        mkEvent('task_completed', `task_c${i}`, {
+          verification: 'self_reported',
+          duration_ms: 1000,
+          steps_total: 3,
+          cost_usd: 0.7,
+        }),
+      ),
+      ...Array.from({ length: 3 }, (_, i) =>
+        mkEvent('task_failed', `task_f${i}`, {
+          error: { type: 'tool_error' },
+          retryable: true,
+          duration_ms: 500,
+        }),
+      ),
+      mkEvent('task_abandoned', 'task_a0', { abandoned_by: 'human', duration_ms: 100 }),
+    ];
+    await insertRows(ch, rows);
+
+    const executor = createMetricExecutor(ch);
+    const window = { tenantId: arithmeticTenant, from: '2026-07-01T00:00:00.000Z', to: '2026-07-08T00:00:00.000Z' };
+
+    const tsr = compileMetric('task_success_rate', window);
+    const tsrRows = await executor.execute(tsr);
+    expect(Number(tsrRows[0]?.value)).toBeCloseTo(0.6, 5);
+
+    const cpct = compileMetric('cost_per_completed_task', window);
+    const cpctRows = await executor.execute(cpct);
+    expect(Number(cpctRows[0]?.value)).toBeCloseTo(0.7, 5);
+
+    // the citation resolves: executed_queries has the record
+    const record = await ch.query({
+      query: `SELECT metric FROM toqar.executed_queries WHERE query_id = '${tsr.id}'`,
+      format: 'JSONEachRow',
+    });
+    const recordRows = (await record.json()) as { metric: string }[];
+    expect(recordRows[0]?.metric).toBe('task_success_rate');
   });
 });

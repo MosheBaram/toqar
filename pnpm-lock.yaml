@@ -113,6 +113,9 @@ importers:
       '@clickhouse/client':
         specifier: ^1.4.0
         version: 1.23.1
+      '@toqar/analysis':
+        specifier: workspace:*
+        version: link:../analysis
       '@toqar/collector':
         specifier: workspace:*
         version: link:../collector

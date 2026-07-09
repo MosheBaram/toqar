@@ -23,6 +23,6 @@
 
 ## 3. Real-ClickHouse verification + close-out
 
-- [ ] 3.1 Integration scenarios in the 1.3 compose job: seeded events → TSR/CPCT arithmetic verified on real ClickHouse
-- [ ] 3.2 Executed-query record storage (resolve design open question with 1.3's schema)
-- [ ] 3.3 README (catalog table, citation contract); root README; `openspec validate --strict`; commit, PR, merge
+- [x] 3.1 Integration scenarios in the 1.3 compose job: seeded events → TSR/CPCT arithmetic verified on real ClickHouse
+- [x] 3.2 Executed-query record storage (resolve design open question with 1.3's schema)
+- [x] 3.3 README (catalog table, citation contract); root README; `openspec validate --strict`; commit, PR, merge

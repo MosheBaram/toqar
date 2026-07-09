@@ -14,7 +14,8 @@
     "@toqar/collector": "workspace:*",
     "@toqar/registry": "workspace:*",
     "kafkajs": "^2.2.4",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@toqar/analysis": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.12",
