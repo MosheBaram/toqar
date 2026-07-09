@@ -4,11 +4,11 @@
 
 ## 1. Sequential statistics (spec: sequential-stats)
 
-- [ ] 1.1 Scaffold `packages/experiments` (zod-only runtime; no LLM deps)
-- [ ] 1.2 TDD always-valid sequential test (mSPRT / confidence sequence): decision + effect estimate + interval + per-arm n
-- [ ] 1.3 TDD the peeking guarantee: A/A stream evaluated every observation keeps cumulative false-positive ≤ alpha; true-effect stream concludes and holds
-- [ ] 1.4 Extract classical baseline from `quarry/ab-testing-framework.ts` (sample size, z-score, CI) with provenance docblock; cross-check the fixed-horizon limit
-- [ ] 1.5 Commit, PR, merge
+- [x] 1.1 Scaffold `packages/experiments` (zod-only runtime; no LLM deps)
+- [x] 1.2 TDD always-valid sequential test (mSPRT / confidence sequence): decision + effect estimate + interval + per-arm n
+- [x] 1.3 TDD the peeking guarantee: A/A stream evaluated every observation keeps cumulative false-positive ≤ alpha; true-effect stream concludes and holds
+- [x] 1.4 Extract classical baseline from `quarry/ab-testing-framework.ts` (sample size, z-score, CI) with provenance docblock; cross-check the fixed-horizon limit
+- [x] 1.5 Commit, PR, merge
 
 ## 2. Experiment records (spec: registry-backend delta)
 
