@@ -47,4 +47,25 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    id: '003_instrument_runs',
+    sql: `
+      CREATE TABLE instrument_runs (
+        id text PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        repo text NOT NULL,
+        pr_url text,
+        outcome text NOT NULL DEFAULT 'delivered',
+        tokens_in integer NOT NULL DEFAULT 0,
+        tokens_out integer NOT NULL DEFAULT 0,
+        cost_usd double precision NOT NULL DEFAULT 0,
+        model text,
+        agent_version text NOT NULL,
+        delivered_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX instrument_runs_tenant_idx
+        ON instrument_runs (tenant_id, delivered_at DESC);
+    `,
+  },
 ];

@@ -18,10 +18,10 @@
 
 ## 3. Implementation + PR phases
 
-- [ ] 3.1 TDD wrapper generation from the skill's template (typed per-event functions matched to the approved plan) + call-site insertion at approved seams
-- [ ] 3.2 Host verification runner: execute the repo's typecheck/test commands; abort PR on red
-- [ ] 3.3 PR assembly (branch, body from skill template, rollback notes); delivery + outcome recording (merge-rate metric)
-- [ ] 3.4 Commit, PR, merge
+- [x] 3.1 TDD wrapper generation from the skill's template (typed per-event functions matched to the approved plan) + call-site insertion at approved seams
+- [x] 3.2 Host verification runner: execute the repo's typecheck/test commands; abort PR on red
+- [x] 3.3 PR assembly (branch, body from skill template, rollback notes); delivery + outcome recording (merge-rate metric)
+- [x] 3.4 Commit, PR, merge
 
 ## 4. CLI + end-to-end
 
