@@ -120,6 +120,16 @@ async function attack(surface: Surface, token: string | null) {
 }
 
 describe('adversarial isolation suite', () => {
+  it('collector accepts events:write tokens (scoped containment cuts the other way)', async () => {
+    const res = await collectorApp.inject({
+      method: 'POST',
+      url: '/v1/events',
+      headers: { authorization: `Bearer ${attackerEventsToken}` },
+      payload: { events: [] },
+    });
+    expect(res.statusCode).toBe(202);
+  });
+
   it('covers every surface with no token: 401 everywhere', async () => {
     for (const [name, surface] of Object.entries(SURFACES)) {
       const res = await attack(surface, null);

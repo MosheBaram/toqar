@@ -19,6 +19,9 @@
     "@toqar/registry-service": "workspace:*",
     "@types/node": "^20.14.0",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "^2.0.5",
+    "@toqar/mcp-server": "workspace:*",
+    "@toqar/analysis-agent": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0"
   }
 }
