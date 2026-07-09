@@ -138,6 +138,12 @@ G1 metrics still holding on the platform.
 
 ## Phase 2 — The closed loop + GA (entry: G2)
 
+> **Specced 2026-07-10.** Both Phase 2 changes now have full OpenSpec
+> artifacts (proposal, delta specs, design, tasks) in
+> `openspec/changes/` — same treatment as Phase 1. Execution remains
+> gated by G2; the sketches below are retained as the at-a-glance
+> summary, with the specs as the authoritative detail.
+
 ### Change 2.1 `experiment-plane` — the third loop, the moat
 
 - **Capabilities:** `flags-integration`, `sequential-stats`, `experiment-agent`
