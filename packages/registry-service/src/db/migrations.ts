@@ -186,4 +186,38 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = current_setting('app.tenant', true));
     `,
   },
+  {
+    id: '008_experiments',
+    sql: `
+      CREATE TABLE experiments (
+        id text PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        experiment jsonb NOT NULL,
+        status text NOT NULL DEFAULT 'created',
+        variant_pr_url text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX experiments_tenant_idx ON experiments (tenant_id, created_at DESC);
+
+      CREATE TABLE experiment_verdicts (
+        experiment_id text PRIMARY KEY REFERENCES experiments(id),
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        verdict jsonb NOT NULL,
+        decided_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      GRANT SELECT, INSERT, UPDATE, DELETE ON experiments, experiment_verdicts TO toqar_app;
+
+      ALTER TABLE experiments ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_experiments ON experiments
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE experiment_verdicts ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_experiment_verdicts ON experiment_verdicts
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+    `,
+  },
 ];

@@ -181,5 +181,31 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return { rejections: await store.listFindingRejections(req.tenantId) };
   });
 
+  app.post('/v1/experiments', async (req) => {
+    return store.createExperiment(req.tenantId, req.body, API_ACTOR);
+  });
+
+  app.get('/v1/experiments', async (req) => {
+    return { experiments: await store.listExperiments(req.tenantId) };
+  });
+
+  app.get<{ Params: { id: string } }>('/v1/experiments/:id', async (req, reply) => {
+    const experiment = await store.getExperiment(req.tenantId, req.params.id);
+    if (!experiment) return reply.code(404).send({ error: 'not_found' });
+    return experiment;
+  });
+
+  app.patch<{ Params: { id: string } }>('/v1/experiments/:id', async (req, reply) => {
+    const found = await store.updateExperiment(req.tenantId, req.params.id, req.body, API_ACTOR);
+    if (!found) return reply.code(404).send({ error: 'not_found' });
+    return { ok: true };
+  });
+
+  app.post<{ Params: { id: string } }>('/v1/experiments/:id/verdict', async (req, reply) => {
+    const found = await store.writeVerdict(req.tenantId, req.params.id, req.body, API_ACTOR);
+    if (!found) return reply.code(404).send({ error: 'not_found' });
+    return { ok: true };
+  });
+
   return app;
 }

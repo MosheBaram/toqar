@@ -31,7 +31,7 @@ export class ConflictError extends Error {
 export interface AuditRecord {
   id: number;
   actor: string;
-  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy' | 'token';
+  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy' | 'token' | 'experiment';
   /** Registry event name, or the repo for seam-map operations. */
   event: string;
   diff: { before: unknown; after: unknown };
@@ -73,6 +73,30 @@ const tokenScopeSchema = z.object({ scope: z.enum(['events:write', 'api:full']) 
 const autonomyGrantSchema = z.object({
   level: z.union([z.literal(0), z.literal(1), z.literal(2)]),
   granted_by: z.string().min(1),
+});
+
+const experimentSchema = z.object({
+  hypothesis: z.string().min(1),
+  target_metric: z.string().min(1),
+  direction: z.enum(['increase', 'decrease']),
+  from_finding_id: z.string().min(1).optional(),
+  from_query_ids: z.array(z.string()).default([]),
+  guardrails: z.array(z.string()).default([]),
+  flag_provider: z.enum(['posthog', 'launchdarkly']),
+});
+
+const experimentStatusSchema = z.object({
+  status: z.enum(['created', 'running', 'concluded', 'stopped']),
+  variant_pr_url: z.string().min(1).optional(),
+});
+
+const verdictSchema = z.object({
+  decision: z.enum(['ship', 'revert', 'inconclusive']),
+  effect: z.number(),
+  interval: z.object({ lower: z.number(), upper: z.number() }),
+  samples: z.object({ control: z.number().int().nonnegative(), variant: z.number().int().nonnegative() }),
+  guardrail_outcomes: z.array(z.object({ metric: z.string(), breached: z.boolean() })).default([]),
+  query_ids: z.array(z.string()),
 });
 
 function parseEntry(value: unknown): RegistryEntry {
@@ -491,6 +515,91 @@ export class RegistryStore {
       await this.audit(tx, tenantId, actor, 'autonomy', `level_${grant.level}`, null, grant);
     });
     return { level: grant.level };
+  }
+
+  /** Creates an experiment (spec: experiment-plane) with its cited premise. */
+  async createExperiment(tenantId: string, value: unknown, actor: string): Promise<{ experiment_id: string }> {
+    const parsed = experimentSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    const experimentId = `exp_${randomUUID()}`;
+    await this.db.transaction(async (tx) => {
+      await tx.query('INSERT INTO experiments (id, tenant_id, experiment) VALUES ($1, $2, $3)', [
+        experimentId,
+        tenantId,
+        JSON.stringify(parsed.data),
+      ]);
+      await this.audit(tx, tenantId, actor, 'experiment', experimentId, null, {
+        action: 'created',
+        target_metric: parsed.data.target_metric,
+      });
+    });
+    return { experiment_id: experimentId };
+  }
+
+  async updateExperiment(tenantId: string, id: string, value: unknown, actor: string): Promise<boolean> {
+    const parsed = experimentStatusSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    return this.db.transaction(async (tx) => {
+      const { rows } = await tx.query('SELECT status FROM experiments WHERE tenant_id = $1 AND id = $2', [tenantId, id]);
+      if (!rows.length) return false;
+      await tx.query(
+        'UPDATE experiments SET status = $3, variant_pr_url = COALESCE($4, variant_pr_url), updated_at = now() WHERE tenant_id = $1 AND id = $2',
+        [tenantId, id, parsed.data.status, parsed.data.variant_pr_url ?? null],
+      );
+      await this.audit(tx, tenantId, actor, 'experiment', id, { status: rows[0]!.status }, { action: 'transition', status: parsed.data.status });
+      return true;
+    });
+  }
+
+  async writeVerdict(tenantId: string, id: string, value: unknown, actor: string): Promise<boolean> {
+    const parsed = verdictSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    return this.db.transaction(async (tx) => {
+      const { rows } = await tx.query('SELECT id FROM experiments WHERE tenant_id = $1 AND id = $2', [tenantId, id]);
+      if (!rows.length) return false;
+      await tx.query(
+        `INSERT INTO experiment_verdicts (experiment_id, tenant_id, verdict) VALUES ($1, $2, $3)
+         ON CONFLICT (experiment_id) DO UPDATE SET verdict = $3, decided_at = now()`,
+        [id, tenantId, JSON.stringify(parsed.data)],
+      );
+      await tx.query("UPDATE experiments SET status = 'concluded', updated_at = now() WHERE tenant_id = $1 AND id = $2", [tenantId, id]);
+      await this.audit(tx, tenantId, actor, 'experiment', id, null, { action: 'verdict', decision: parsed.data.decision });
+      return true;
+    });
+  }
+
+  async listExperiments(tenantId: string): Promise<Record<string, unknown>[]> {
+    const { rows } = await this.db.query(
+      'SELECT id, experiment, status, variant_pr_url, created_at FROM experiments WHERE tenant_id = $1 ORDER BY created_at DESC, id',
+      [tenantId],
+    );
+    return rows.map((r) => ({
+      experiment_id: r.id,
+      status: r.status,
+      variant_pr_url: r.variant_pr_url,
+      created_at: String(r.created_at),
+      ...(r.experiment as Record<string, unknown>),
+    }));
+  }
+
+  async getExperiment(tenantId: string, id: string): Promise<Record<string, unknown> | null> {
+    const { rows } = await this.db.query(
+      'SELECT id, experiment, status, variant_pr_url, created_at FROM experiments WHERE tenant_id = $1 AND id = $2',
+      [tenantId, id],
+    );
+    if (!rows.length) return null;
+    const verdict = await this.db.query(
+      'SELECT verdict, decided_at FROM experiment_verdicts WHERE tenant_id = $1 AND experiment_id = $2',
+      [tenantId, id],
+    );
+    return {
+      experiment_id: rows[0]!.id,
+      status: rows[0]!.status,
+      variant_pr_url: rows[0]!.variant_pr_url,
+      created_at: String(rows[0]!.created_at),
+      ...(rows[0]!.experiment as Record<string, unknown>),
+      verdict: verdict.rows.length ? verdict.rows[0]!.verdict : null,
+    };
   }
 
   async listAudit(tenantId: string, limit = 100): Promise<AuditRecord[]> {
