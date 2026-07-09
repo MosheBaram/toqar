@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  findingSchema,
   registryEntrySchema,
   seamMapSchema,
   trackingPlanSchema,
+  validateFindingCitations,
   type RegistryEntry,
   type SeamMap,
 } from '@toqar/registry';
@@ -29,7 +31,7 @@ export class ConflictError extends Error {
 export interface AuditRecord {
   id: number;
   actor: string;
-  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run';
+  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding';
   /** Registry event name, or the repo for seam-map operations. */
   event: string;
   diff: { before: unknown; after: unknown };
@@ -59,6 +61,12 @@ const instrumentRunSchema = z.object({
 });
 
 const runOutcomeSchema = z.enum(['delivered', 'merged', 'edited_then_merged', 'rejected']);
+
+const deliverySchema = z.object({
+  channel: z.enum(['slack']),
+  status: z.enum(['delivered', 'failed']),
+  detail: z.string().optional(),
+});
 
 function parseEntry(value: unknown): RegistryEntry {
   const parsed = registryEntrySchema.safeParse(value);
@@ -296,6 +304,98 @@ export class RegistryStore {
       (r) => r.outcome === 'merged' || r.outcome === 'edited_then_merged',
     ).length;
     return { runs: rows, merge_rate: { merged, delivered: rows.length } };
+  }
+
+  /**
+   * Publishes a finding after schema + citation validation. An uncited
+   * number rejects the whole draft into finding_rejections — the prompt
+   * regression log (spec: analysis-agent, Uncited-number scenario).
+   */
+  async publishFinding(
+    tenantId: string,
+    value: unknown,
+    actor: string,
+  ): Promise<{ finding_id: string } | { rejected: true; uncited: string[] }> {
+    const citations = validateFindingCitations(value);
+    if (!citations.ok) {
+      await this.db.query(
+        'INSERT INTO finding_rejections (tenant_id, reason, draft) VALUES ($1, $2, $3)',
+        [tenantId, `uncited numbers: ${citations.uncited.join(', ')}`, JSON.stringify(value)],
+      );
+      return { rejected: true, uncited: citations.uncited };
+    }
+    const finding = findingSchema.parse(value);
+    const findingId = `f_${randomUUID()}`;
+    await this.db.transaction(async (tx) => {
+      await tx.query('INSERT INTO findings (id, tenant_id, finding) VALUES ($1, $2, $3)', [
+        findingId,
+        tenantId,
+        JSON.stringify(finding),
+      ]);
+      await this.audit(tx, tenantId, actor, 'finding', finding.headline.slice(0, 120), null, {
+        finding_id: findingId,
+        layer: finding.layer,
+        severity: finding.severity,
+      });
+    });
+    return { finding_id: findingId };
+  }
+
+  async listFindings(tenantId: string, limit = 50): Promise<Record<string, unknown>[]> {
+    const { rows } = await this.db.query(
+      'SELECT id, finding, published_at FROM findings WHERE tenant_id = $1 ORDER BY published_at DESC, id LIMIT $2',
+      [tenantId, limit],
+    );
+    return rows.map((r) => ({
+      finding_id: r.id,
+      published_at: String(r.published_at),
+      ...(r.finding as Record<string, unknown>),
+    }));
+  }
+
+  async getFinding(tenantId: string, findingId: string): Promise<Record<string, unknown> | null> {
+    const { rows } = await this.db.query(
+      'SELECT id, finding, published_at FROM findings WHERE tenant_id = $1 AND id = $2',
+      [tenantId, findingId],
+    );
+    if (!rows.length) return null;
+    const deliveries = await this.db.query(
+      'SELECT channel, status, detail, attempted_at FROM finding_deliveries WHERE tenant_id = $1 AND finding_id = $2 ORDER BY id DESC',
+      [tenantId, findingId],
+    );
+    return {
+      finding_id: rows[0]!.id,
+      published_at: String(rows[0]!.published_at),
+      ...(rows[0]!.finding as Record<string, unknown>),
+      deliveries: deliveries.rows,
+    };
+  }
+
+  async recordDelivery(
+    tenantId: string,
+    findingId: string,
+    value: unknown,
+  ): Promise<boolean> {
+    const parsed = deliverySchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    const { rows } = await this.db.query(
+      'SELECT id FROM findings WHERE tenant_id = $1 AND id = $2',
+      [tenantId, findingId],
+    );
+    if (!rows.length) return false;
+    await this.db.query(
+      'INSERT INTO finding_deliveries (tenant_id, finding_id, channel, status, detail) VALUES ($1, $2, $3, $4, $5)',
+      [tenantId, findingId, parsed.data.channel, parsed.data.status, parsed.data.detail ?? null],
+    );
+    return true;
+  }
+
+  async listFindingRejections(tenantId: string): Promise<Record<string, unknown>[]> {
+    const { rows } = await this.db.query(
+      'SELECT reason, draft, created_at FROM finding_rejections WHERE tenant_id = $1 ORDER BY id DESC',
+      [tenantId],
+    );
+    return rows;
   }
 
   async listAudit(tenantId: string, limit = 100): Promise<AuditRecord[]> {

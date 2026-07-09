@@ -4,9 +4,9 @@
 
 ## 1. Findings storage + citation validator
 
-- [ ] 1.1 Control-plane migration: `findings` + delivery records (D3 shapes); store TDD
-- [ ] 1.2 TDD citation validator: uncited numeric claim → rejection + regression log (Uncited-number scenario)
-- [ ] 1.3 Commit, PR, merge
+- [x] 1.1 Control-plane migration: `findings` + delivery records (D3 shapes); store TDD
+- [x] 1.2 TDD citation validator: uncited numeric claim → rejection + regression log (Uncited-number scenario)
+- [x] 1.3 Commit, PR, merge
 
 ## 2. Analysis agent (spec: analysis-agent)
 
