@@ -108,4 +108,62 @@ suite('collector → Redpanda → ClickHouse', () => {
     await new Promise((r) => setTimeout(r, 1500));
     expect(await countRows()).toBe(before + 1);
   });
+
+  it('vanilla OTLP export lands as step_executed rows, deduped on resend', async () => {
+    const NS = 1_000_000_000n;
+    const payload = {
+      resourceSpans: [
+        {
+          resource: { attributes: [{ key: 'service.name', value: { stringValue: 'sdr-agent' } }] },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+                  spanId: '0102030405060708',
+                  parentSpanId: 'ffffffffffffffff',
+                  name: 'llm.call',
+                  startTimeUnixNano: String(1_752_000_000n * NS),
+                  endTimeUnixNano: String(1_752_000_002n * NS),
+                  attributes: [
+                    { key: 'gen_ai.request.model', value: { stringValue: 'claude-sonnet-5' } },
+                    { key: 'toqar.task_type', value: { stringValue: 'reply_to_lead' } },
+                  ],
+                  status: { code: 1 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const send = () =>
+      app.inject({
+        method: 'POST',
+        url: '/v1/traces',
+        headers: { authorization: `Bearer ${token}` },
+        payload,
+      });
+    const first = await send();
+    expect(first.statusCode).toBe(202);
+    expect(first.json().accepted).toBe(1);
+    await send(); // OTLP retry — deterministic event_id must dedupe
+
+    const query = async () => {
+      const result = await ch.query({
+        query: `SELECT count() AS c FROM toqar.events FINAL WHERE tenant_id = '${tenantId}' AND event = 'step_executed' AND agent_name = 'sdr-agent'`,
+        format: 'JSONEachRow',
+      });
+      return Number(((await result.json()) as { c: string }[])[0]?.c ?? 0);
+    };
+
+    const deadline = Date.now() + 10_000;
+    while ((await query()) < 1) {
+      if (Date.now() > deadline) throw new Error('OTLP-mapped row never arrived');
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(await query()).toBe(1);
+  });
 });

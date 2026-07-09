@@ -26,10 +26,10 @@
 
 ## 4. OTLP intake (spec: otel-traces)
 
-- [ ] 4.1 OTLP/HTTP endpoint on the collector (tenant-authenticated)
-- [ ] 4.2 TDD versioned span→TOQAR mapping module (table-driven: GenAI llm span, tool span, root task span, unmappable counter)
-- [ ] 4.3 Integration scenario: vanilla OTel SDK export → step_executed rows in ClickHouse
-- [ ] 4.4 Commit, PR, merge
+- [x] 4.1 OTLP/HTTP endpoint on the collector (tenant-authenticated)
+- [x] 4.2 TDD versioned span→TOQAR mapping module (table-driven: GenAI llm span, tool span, root task span, unmappable counter)
+- [x] 4.3 Integration scenario: vanilla OTel SDK export → step_executed rows in ClickHouse
+- [x] 4.4 Commit, PR, merge
 
 ## 5. Deploy + close-out
 

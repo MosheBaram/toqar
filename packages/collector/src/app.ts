@@ -6,6 +6,7 @@ import {
 } from '@toqar/registry';
 import { RegistryStore, type SqlExecutor } from '@toqar/registry-service';
 import { z } from 'zod';
+import { mapResourceSpans, type OtlpResourceSpans } from './otel.js';
 import type { BufferedSink } from './sink.js';
 
 declare module 'fastify' {
@@ -97,6 +98,18 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
   });
 
   app.get('/v1/rejections', async (req) => rejections.for(req.collectorTenantId));
+
+  // OTLP/HTTP JSON trace intake (spec: otel-traces) — vanilla OTel SDKs
+  // export here with the tenant token; spans map via versioned conventions.
+  app.post<{ Body: OtlpResourceSpans }>('/v1/traces', async (req, reply) => {
+    const { events, unmapped } = mapResourceSpans(req.body ?? {});
+    for (let i = 0; i < unmapped.length; i++) {
+      rejections.record(req.collectorTenantId, 'unmapped_span');
+    }
+    const enriched = events.map((e) => ({ ...e, tenant_id: req.collectorTenantId }));
+    await sink.publish(enriched);
+    return reply.code(202).send({ accepted: enriched.length, unmapped: unmapped.length });
+  });
 
   return app;
 }
