@@ -90,15 +90,15 @@ describe('mapResourceSpans', () => {
       ),
     );
     expect(result.unmapped).toHaveLength(0);
-    const byEvent = Object.groupBy(result.events, (e) => String(e.event));
+    const ofKind = (name: string) => result.events.filter((e) => e.event === name);
 
-    expect(byEvent.step_executed?.[0]).toMatchObject({
+    expect(ofKind('step_executed')[0]).toMatchObject({
       step_type: 'tool_call',
       tool_name: 'crm_lookup',
       status: 'error',
     });
-    expect(byEvent.task_started?.[0]).toMatchObject({ task_type: 'reply_to_lead', initiator: 'api' });
-    expect(byEvent.task_completed?.[0]).toMatchObject({
+    expect(ofKind('task_started')[0]).toMatchObject({ task_type: 'reply_to_lead', initiator: 'api' });
+    expect(ofKind('task_completed')[0]).toMatchObject({
       verification: 'self_reported',
       duration_ms: 2000,
     });
