@@ -10,11 +10,11 @@
 
 ## 2. Agent core package
 
-- [ ] 2.1 Scaffold `packages/instrumentation-agent` (Claude Agent SDK, workspace deps registry + cli-shared code where sensible)
-- [ ] 2.2 TDD deterministic seam scanner: detect framework (Express/React/raw SDK), locate task starts, LLM/tool call sites, outcome + handoff seams against the fixture app; unsupported-stack refusal scenario
-- [ ] 2.3 TDD plan builder: seam map → `TrackingPlan` (proposed entries, real `file:line` anchors, three-questions mapping when intake provided); submit to registry backend as `proposed`
-- [ ] 2.4 Agent loop: prompts (versioned) driving the scanner/plan tools; run record with tokens + cost; seam map persisted via group 1 routes
-- [ ] 2.5 Commit, PR, merge
+- [x] 2.1 Scaffold `packages/instrumentation-agent` (Claude Agent SDK, workspace deps registry + cli-shared code where sensible)
+- [x] 2.2 TDD deterministic seam scanner: detect framework (Express/React/raw SDK), locate task starts, LLM/tool call sites, outcome + handoff seams against the fixture app; unsupported-stack refusal scenario
+- [x] 2.3 TDD plan builder: seam map → `TrackingPlan` (proposed entries, real `file:line` anchors, three-questions mapping when intake provided); submit to registry backend as `proposed`
+- [x] 2.4 Agent loop: prompts (versioned) driving the scanner/plan tools; run record with tokens + cost; seam map persisted via group 1 routes
+- [x] 2.5 Commit, PR, merge
 
 ## 3. Implementation + PR phases
 
