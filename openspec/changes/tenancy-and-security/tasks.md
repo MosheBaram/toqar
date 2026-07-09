@@ -4,9 +4,9 @@
 
 ## 1. Token lifecycle (specs: tenancy, registry-backend delta)
 
-- [ ] 1.1 Migration: `tenant_tokens` (hash, scope, issued_at, revoked_at); 1.1 tokens migrated as `api:full`
-- [ ] 1.2 TDD issue/list(prefix-only)/revoke routes with audit; immediate-revocation and scoped-containment scenarios
-- [ ] 1.3 Commit, PR, merge
+- [x] 1.1 Migration: `tenant_tokens` (hash, scope, issued_at, revoked_at); 1.1 tokens migrated as `api:full`
+- [x] 1.2 TDD issue/list(prefix-only)/revoke routes with audit; immediate-revocation and scoped-containment scenarios
+- [x] 1.3 Commit, PR, merge
 
 ## 2. RLS + adversarial suite foundation (spec: tenancy)
 

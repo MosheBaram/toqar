@@ -31,7 +31,7 @@ export class ConflictError extends Error {
 export interface AuditRecord {
   id: number;
   actor: string;
-  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy';
+  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy' | 'token';
   /** Registry event name, or the repo for seam-map operations. */
   event: string;
   diff: { before: unknown; after: unknown };
@@ -68,6 +68,8 @@ const deliverySchema = z.object({
   detail: z.string().optional(),
 });
 
+const tokenScopeSchema = z.object({ scope: z.enum(['events:write', 'api:full']) });
+
 const autonomyGrantSchema = z.object({
   level: z.union([z.literal(0), z.literal(1), z.literal(2)]),
   granted_by: z.string().min(1),
@@ -92,6 +94,10 @@ export class RegistryStore {
         name,
         hashToken(token),
       ]);
+      await tx.query(
+        'INSERT INTO tenant_tokens (id, tenant_id, token_hash, prefix, scope) VALUES ($1, $2, $3, $4, $5)',
+        [`tk_${randomUUID()}`, tenantId, hashToken(token), token.slice(0, 12), 'api:full'],
+      );
       for (const entry of defaultTaxonomy()) {
         await this.writeEntry(tx, tenantId, entry);
         await this.audit(tx, tenantId, 'system', 'seed', entry.event, null, entry);
@@ -100,11 +106,69 @@ export class RegistryStore {
     return { tenantId, token };
   }
 
+  /** Scope-aware auth resolution; revoked tokens fail everywhere, immediately. */
+  async resolveToken(token: string): Promise<{ tenantId: string; scope: string } | null> {
+    const { rows } = await this.db.query(
+      'SELECT tenant_id, scope FROM tenant_tokens WHERE token_hash = $1 AND revoked_at IS NULL',
+      [hashToken(token)],
+    );
+    if (!rows.length) return null;
+    return { tenantId: rows[0]!.tenant_id as string, scope: rows[0]!.scope as string };
+  }
+
   async findTenantByToken(token: string): Promise<string | null> {
-    const { rows } = await this.db.query('SELECT id FROM tenants WHERE token_hash = $1', [
-      hashToken(token),
-    ]);
-    return (rows[0]?.id as string | undefined) ?? null;
+    return (await this.resolveToken(token))?.tenantId ?? null;
+  }
+
+  async issueToken(
+    tenantId: string,
+    value: unknown,
+    actor: string,
+  ): Promise<{ token_id: string; token: string; prefix: string }> {
+    const parsed = tokenScopeSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    const token = `tok_${randomUUID()}`;
+    const tokenId = `tk_${randomUUID()}`;
+    const prefix = token.slice(0, 12);
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        'INSERT INTO tenant_tokens (id, tenant_id, token_hash, prefix, scope) VALUES ($1, $2, $3, $4, $5)',
+        [tokenId, tenantId, hashToken(token), prefix, parsed.data.scope],
+      );
+      await this.audit(tx, tenantId, actor, 'token', prefix, null, {
+        token_id: tokenId,
+        scope: parsed.data.scope,
+        action: 'issued',
+      });
+    });
+    return { token_id: tokenId, token, prefix };
+  }
+
+  async listTokens(tenantId: string): Promise<Record<string, unknown>[]> {
+    const { rows } = await this.db.query(
+      'SELECT id AS token_id, prefix, scope, issued_at, revoked_at FROM tenant_tokens WHERE tenant_id = $1 ORDER BY issued_at',
+      [tenantId],
+    );
+    return rows;
+  }
+
+  async revokeToken(tenantId: string, tokenId: string, actor: string): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT prefix FROM tenant_tokens WHERE tenant_id = $1 AND id = $2 AND revoked_at IS NULL',
+        [tenantId, tokenId],
+      );
+      if (!rows.length) return false;
+      await tx.query(
+        'UPDATE tenant_tokens SET revoked_at = now() WHERE tenant_id = $1 AND id = $2',
+        [tenantId, tokenId],
+      );
+      await this.audit(tx, tenantId, actor, 'token', String(rows[0]!.prefix), null, {
+        token_id: tokenId,
+        action: 'revoked',
+      });
+      return true;
+    });
   }
 
   async listEntries(tenantId: string): Promise<RegistryEntry[]> {
