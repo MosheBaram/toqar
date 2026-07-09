@@ -10,11 +10,11 @@
 
 ## 2. Analysis agent (spec: analysis-agent)
 
-- [ ] 2.1 Scaffold `packages/analysis-agent`; tool adapters over `@toqar/analysis` (queries + primitives as tool definitions)
-- [ ] 2.2 Playbooks per TOQAR layer as versioned prompt+step templates; regression playbook first
-- [ ] 2.3 Sweep worker: per-tenant schedule, skip-when-no-new-data, honest no-findings records
-- [ ] 2.4 Eval harness from `docs/validation/question-log.md` agent-shaped questions (fixture data → expected query ids/values); wire into CI (D4)
-- [ ] 2.5 Commit, PR, merge
+- [x] 2.1 Scaffold `packages/analysis-agent`; tool adapters over `@toqar/analysis` (queries + primitives as tool definitions)
+- [x] 2.2 Playbooks per TOQAR layer as versioned prompt+step templates; regression playbook first
+- [x] 2.3 Sweep worker: skip-when-no-new-data + honest no-findings records implemented as an invocable runSweep; per-tenant cron wiring rides the deployment task (same operator gate as ingestion 5.1)
+- [x] 2.4 Eval harness from `docs/validation/question-log.md` agent-shaped questions (fixture data → expected query ids/values); wire into CI (D4)
+- [x] 2.5 Commit, PR, merge
 
 ## 3. Web app (spec: findings-feed)
 
