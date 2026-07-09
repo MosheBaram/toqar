@@ -13,13 +13,13 @@
 
 ## 2. Semantic layer (spec: semantic-layer)
 
-- [ ] 2.1 Query-AST helpers + `QueryExecutor` seam (D1, D4)
-- [ ] 2.2 TDD T-layer metrics (TSR, Overclaim, First-Run Resolution, Abandonment) — golden SQL + fixture arithmetic
-- [ ] 2.3 TDD O-layer (CPCT with failed-runs-in-numerator, tokens/steps trends, latency distributions, Loop/Retry, per-tool failure)
-- [ ] 2.4 TDD Q-layer (Human Edit Distance, Regression Delta around agent.version/model change, complaint rate)
-- [ ] 2.5 TDD A-layer (Autonomy Rate, Escalation, Override/Takeover, Approval Friction) and R-layer (WTA, Task Depth, Delegation Share, Net Task Growth)
-- [ ] 2.6 Catalog completeness test: every README headline metric present; query-id content hashing (D2)
-- [ ] 2.7 Commit, PR, merge
+- [x] 2.1 Query-AST helpers + `QueryExecutor` seam (D1, D4)
+- [x] 2.2 TDD T-layer metrics (TSR, Overclaim, First-Run Resolution, Abandonment) — golden SQL + fixture arithmetic
+- [x] 2.3 TDD O-layer (CPCT with failed-runs-in-numerator, tokens/steps trends, latency distributions, Loop/Retry, per-tool failure)
+- [x] 2.4 TDD Q-layer (Human Edit Distance, Regression Delta around agent.version/model change, complaint rate)
+- [x] 2.5 TDD A-layer (Autonomy Rate, Escalation, Override/Takeover, Approval Friction) and R-layer (WTA, Task Depth, Delegation Share, Net Task Growth)
+- [x] 2.6 Catalog completeness test: every README headline metric present; query-id content hashing (D2)
+- [x] 2.7 Commit, PR, merge
 
 ## 3. Real-ClickHouse verification + close-out
 
