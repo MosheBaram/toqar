@@ -30,6 +30,16 @@ Main specs in `openspec/specs/` are the contract for what exists today:
   are specs-first changes, the quality gates, and running validation in
   parallel so the steering signals still arrive.
 
+- **2026-07-10 — founder decision: build Phase 2 ahead of G2.** Same
+  posture extended to the closed loop and GA surface: G2 is demoted from
+  build gate to steering signal. Phase 2 (experiment-plane,
+  go-to-market-surface) is implemented now on founder conviction; G2's
+  criteria (a converted paying customer, e2e flow) still steer
+  prioritization and remain the honest measure of demand. The
+  deployment-shaped work (billing charges, benchmarking cohorts, the
+  production deploy) stays operator-gated regardless — building the code
+  does not provision infrastructure or take real money.
+
 ---
 
 ## Phase 0.5 — Run the validation (parallel track, weeks 0–8)
@@ -138,11 +148,12 @@ G1 metrics still holding on the platform.
 
 ## Phase 2 — The closed loop + GA (entry: G2)
 
-> **Specced 2026-07-10.** Both Phase 2 changes now have full OpenSpec
-> artifacts (proposal, delta specs, design, tasks) in
-> `openspec/changes/` — same treatment as Phase 1. Execution remains
-> gated by G2; the sketches below are retained as the at-a-glance
-> summary, with the specs as the authoritative detail.
+> **Specced 2026-07-10; in implementation (amendment 2026-07-10).** Both
+> Phase 2 changes have full OpenSpec artifacts in `openspec/changes/` and
+> are being built now on founder conviction — G2 is a steering signal,
+> not a build gate (see amendment log). Deployment-shaped work (billing
+> charges, benchmark cohorts, production deploy) stays operator-gated.
+> The sketches below are the at-a-glance summary; the specs are authoritative.
 
 ### Change 2.1 `experiment-plane` — the third loop, the moat
 
