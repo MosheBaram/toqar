@@ -10,10 +10,10 @@
 
 ## 2. RLS + adversarial suite foundation (spec: tenancy)
 
-- [ ] 2.1 TDD `withTenant` session context on the SqlExecutor seam (PGlite + postgres bindings)
-- [ ] 2.2 RLS policies on tenants/registry_entries/audit_log/repo_context; application-bug-contained scenario
-- [ ] 2.3 Scaffold `packages/isolation-suite`: table-driven attacks against registry API surfaces; wire into CI
-- [ ] 2.4 Commit, PR, merge
+- [x] 2.1 TDD `tenantTransaction` session context on the SqlExecutor seam (PGlite + postgres bindings; non-owner toqar_app role so policies actually apply)
+- [x] 2.2 RLS policies on all ten tenant tables; application-bug-contained scenario (unscoped query sees one tenant), cross-tenant read/write rejection, audit invisibility. Store-wide adoption of tenantTransaction rides groups 3-4 hardening
+- [x] 2.3 Scaffold `packages/isolation-suite`: table-driven attacks against registry API surfaces; wire into CI
+- [x] 2.4 Commit, PR, merge
 
 ## 3. Harden ingestion (after change 1.3 merges)
 

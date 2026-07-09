@@ -27,6 +27,13 @@ export async function createPgliteExecutor(): Promise<SqlExecutor> {
     async transaction(fn) {
       return db.transaction(async (tx) => fn(runner(tx)));
     },
+    async tenantTransaction(tenantId, fn) {
+      return db.transaction(async (tx) => {
+        await tx.exec('SET LOCAL ROLE toqar_app');
+        await tx.query("SELECT set_config('app.tenant', $1, true)", [tenantId]);
+        return fn(runner(tx));
+      });
+    },
     async close() {
       await db.close();
     },

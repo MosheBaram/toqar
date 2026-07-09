@@ -24,6 +24,13 @@ export function createPostgresExecutor(connectionString: string): SqlExecutor {
     async transaction(fn) {
       return sql.begin(async (tx) => fn(runner(tx))) as Promise<never>;
     },
+    async tenantTransaction(tenantId, fn) {
+      return sql.begin(async (tx) => {
+        await tx.unsafe('SET LOCAL ROLE toqar_app');
+        await tx.unsafe("SELECT set_config('app.tenant', $1, true)", [tenantId]);
+        return fn(runner(tx));
+      }) as Promise<never>;
+    },
     async close() {
       await sql.end();
     },
