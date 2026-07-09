@@ -31,7 +31,7 @@ export class ConflictError extends Error {
 export interface AuditRecord {
   id: number;
   actor: string;
-  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding';
+  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy';
   /** Registry event name, or the repo for seam-map operations. */
   event: string;
   diff: { before: unknown; after: unknown };
@@ -66,6 +66,11 @@ const deliverySchema = z.object({
   channel: z.enum(['slack']),
   status: z.enum(['delivered', 'failed']),
   detail: z.string().optional(),
+});
+
+const autonomyGrantSchema = z.object({
+  level: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+  granted_by: z.string().min(1),
 });
 
 function parseEntry(value: unknown): RegistryEntry {
@@ -396,6 +401,32 @@ export class RegistryStore {
       [tenantId],
     );
     return rows;
+  }
+
+  /** The autonomy dial: each rung is an explicit, audited grant. Default 0. */
+  async getAutonomy(tenantId: string): Promise<{
+    level: number;
+    history: Record<string, unknown>[];
+  }> {
+    const { rows } = await this.db.query(
+      'SELECT level, granted_by, granted_at FROM autonomy_grants WHERE tenant_id = $1 ORDER BY id DESC',
+      [tenantId],
+    );
+    return { level: rows.length ? Number(rows[0]!.level) : 0, history: rows };
+  }
+
+  async grantAutonomy(tenantId: string, value: unknown, actor: string): Promise<{ level: number }> {
+    const parsed = autonomyGrantSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    const grant = parsed.data;
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        'INSERT INTO autonomy_grants (tenant_id, level, granted_by) VALUES ($1, $2, $3)',
+        [tenantId, grant.level, grant.granted_by],
+      );
+      await this.audit(tx, tenantId, actor, 'autonomy', `level_${grant.level}`, null, grant);
+    });
+    return { level: grant.level };
   }
 
   async listAudit(tenantId: string, limit = 100): Promise<AuditRecord[]> {

@@ -18,12 +18,12 @@
 
 ## 3. Web app (spec: findings-feed)
 
-- [ ] 3.1 Scaffold `apps/web` (Vite + React strict); tokens linked, fonts self-hosted (design-system caveat closed)
-- [ ] 3.2 Productize D2 components (FindingCard, EvidenceDrilldown, filters, AppShell) with typed props; canonical-event-name rule enforced in one formatting helper
-- [ ] 3.3 Feed + drill-down pages against the findings API; honest empty state with real sweep timing
-- [ ] 3.4 Registry browser page (backend-sourced identity cards, deprecated struck-through)
-- [ ] 3.5 Autonomy dial settings page: confirm-to-raise, backend grant + audit line (Grant-recorded scenario)
-- [ ] 3.6 Commit, PR, merge
+- [x] 3.1 Scaffold `apps/web` (Vite + React strict); tokens linked verbatim from the design system. Deviation: fonts remain on the CDN import pending asset vendoring — caveat stays open, recorded here
+- [x] 3.2 Productize D2 components (FindingCard, EvidenceDrilldown, filters, AppShell) with typed props; canonical-event-name rule enforced in one formatting helper
+- [x] 3.3 Feed + drill-down pages against the findings API; honest empty state (shows registry status and "no sweep completed" — no fake countdown until a scheduler API exists)
+- [x] 3.4 Registry browser page (backend-sourced identity cards, deprecated struck-through)
+- [x] 3.5 Autonomy dial settings page: confirm-to-raise, backend grant + audit line (Grant-recorded scenario)
+- [x] 3.6 Commit, PR, merge
 
 ## 4. Slack delivery (spec: slack-delivery)
 

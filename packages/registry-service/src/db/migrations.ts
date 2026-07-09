@@ -99,4 +99,16 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    id: '005_autonomy_grants',
+    sql: `
+      CREATE TABLE autonomy_grants (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        level int NOT NULL CHECK (level IN (0, 1, 2)),
+        granted_by text NOT NULL,
+        granted_at timestamptz NOT NULL DEFAULT now()
+      );
+    `,
+  },
 ];
