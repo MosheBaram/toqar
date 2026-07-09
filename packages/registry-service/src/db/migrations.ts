@@ -111,4 +111,21 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    id: '006_tenant_tokens',
+    sql: `
+      CREATE TABLE tenant_tokens (
+        id text PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        token_hash text NOT NULL UNIQUE,
+        prefix text NOT NULL,
+        scope text NOT NULL CHECK (scope IN ('events:write', 'api:full')),
+        issued_at timestamptz NOT NULL DEFAULT now(),
+        revoked_at timestamptz
+      );
+
+      INSERT INTO tenant_tokens (id, tenant_id, token_hash, prefix, scope)
+        SELECT 'tk_' || id, id, token_hash, 'tok_migrated', 'api:full' FROM tenants;
+    `,
+  },
 ];

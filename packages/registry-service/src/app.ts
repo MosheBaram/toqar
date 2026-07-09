@@ -46,11 +46,14 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     if (!req.url.startsWith('/v1/')) return;
     const header = req.headers.authorization;
     const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
-    const tenantId = token ? await store.findTenantByToken(token) : null;
-    if (!tenantId) {
+    const resolved = token ? await store.resolveToken(token) : null;
+    if (!resolved) {
       return reply.code(401).send({ error: 'unauthorized' });
     }
-    req.tenantId = tenantId;
+    if (resolved.scope !== 'api:full') {
+      return reply.code(403).send({ error: 'insufficient_scope', required: 'api:full' });
+    }
+    req.tenantId = resolved.tenantId;
   });
 
   app.get('/v1/registry/events', async (req) => {
@@ -158,6 +161,20 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
 
   app.put('/v1/autonomy', async (req) => {
     return store.grantAutonomy(req.tenantId, req.body, API_ACTOR);
+  });
+
+  app.post('/v1/tokens', async (req) => {
+    return store.issueToken(req.tenantId, req.body, API_ACTOR);
+  });
+
+  app.get('/v1/tokens', async (req) => {
+    return { tokens: await store.listTokens(req.tenantId) };
+  });
+
+  app.delete<{ Params: { id: string } }>('/v1/tokens/:id', async (req, reply) => {
+    const found = await store.revokeToken(req.tenantId, req.params.id, API_ACTOR);
+    if (!found) return reply.code(404).send({ error: 'not_found' });
+    return { ok: true };
   });
 
   app.get('/v1/finding-rejections', async (req) => {
