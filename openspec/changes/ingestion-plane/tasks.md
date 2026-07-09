@@ -19,10 +19,10 @@
 
 ## 3. Stream → ClickHouse (spec: stream-pipeline)
 
-- [ ] 3.1 docker-compose: Redpanda + ClickHouse + collector; ClickHouse `events` schema (D4) with event_id dedup
-- [ ] 3.2 Consumer/sink service: topic → ClickHouse inserts; idempotent redelivery
-- [ ] 3.3 `integration.yml` CI job: freshness (<10s) and duplicate-redelivery scenarios against compose
-- [ ] 3.4 Commit, PR, merge
+- [x] 3.1 docker-compose: Redpanda + ClickHouse + collector; ClickHouse `events` schema (D4) with event_id dedup
+- [x] 3.2 Consumer/sink service: topic → ClickHouse inserts; idempotent redelivery
+- [x] 3.3 `integration.yml` CI job: freshness (<10s) and duplicate-redelivery scenarios against compose
+- [x] 3.4 Commit, PR, merge
 
 ## 4. OTLP intake (spec: otel-traces)
 

@@ -1,0 +1,33 @@
+name: Integration
+
+on:
+  pull_request:
+    paths:
+      - "packages/pipeline/**"
+      - "packages/collector/**"
+      - "packages/sdk/**"
+      - "infra/**"
+      - ".github/workflows/integration.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/pipeline/**"
+      - "packages/collector/**"
+      - "infra/**"
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: docker compose -f infra/docker-compose.yml up -d --wait
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: TOQAR_INTEGRATION=1 pnpm --filter @toqar/pipeline test
+      - if: always()
+        run: docker compose -f infra/docker-compose.yml down -v
