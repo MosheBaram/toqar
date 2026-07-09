@@ -11,11 +11,11 @@
 
 ## 2. Collector (spec: event-collector)
 
-- [ ] 2.1 Scaffold `packages/collector` (Fastify, shared tenant auth against registry Postgres)
-- [ ] 2.2 TDD `POST /v1/events`: per-item validation, mixed-batch 202 semantics, snake_case product events
-- [ ] 2.3 TDD rejection counters per tenant + reason class; truthful `/health` incl. broker state
-- [ ] 2.4 TDD buffered publish over a `StreamSink` seam (in-memory in unit tests); broker-blip scenario
-- [ ] 2.5 Commit, PR, merge
+- [x] 2.1 Scaffold `packages/collector` (Fastify, shared tenant auth against registry Postgres)
+- [x] 2.2 TDD `POST /v1/events`: per-item validation, mixed-batch 202 semantics, snake_case product events
+- [x] 2.3 TDD rejection counters per tenant + reason class; truthful `/health` incl. broker state
+- [x] 2.4 TDD buffered publish over a `StreamSink` seam (in-memory in unit tests); broker-blip scenario
+- [x] 2.5 Commit, PR, merge
 
 ## 3. Stream → ClickHouse (spec: stream-pipeline)
 
