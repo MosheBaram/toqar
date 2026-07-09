@@ -1,0 +1,30 @@
+{
+  "name": "@toqar/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "toqar-mcp": "dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@toqar/analysis": "workspace:*",
+    "@toqar/registry": "workspace:*",
+    "zod": "^3.23.8",
+    "@toqar/pipeline": "workspace:*"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.12",
+    "@toqar/analysis-agent": "workspace:*",
+    "@toqar/registry-service": "workspace:*",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

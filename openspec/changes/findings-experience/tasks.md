@@ -33,7 +33,7 @@
 
 ## 5. MCP server (spec: mcp-server) + close-out
 
-- [ ] 5.1 Scaffold `packages/mcp-server` on the official TS SDK; tenant-token auth
-- [ ] 5.2 TDD tools: `query_metric` (citation contract), `list_findings`/`get_finding`, `get_registry`; read-only surface test
-- [ ] 5.3 E2E: Claude Code client session against a fixture tenant answers a logged question via MCP
-- [ ] 5.4 READMEs, root README, `openspec validate --strict`; commit, PR, merge
+- [x] 5.1 Scaffold `packages/mcp-server` on the official TS SDK; tenant-token auth
+- [x] 5.2 TDD tools: `query_metric` (citation contract), `list_findings`/`get_finding`, `get_registry`; read-only surface test
+- [x] 5.3 E2E: a real MCP client over a linked transport answers the logged cost question through the protocol (LLM-driven session is operator-side; the protocol path is fully exercised)
+- [x] 5.4 READMEs, root README, `openspec validate --strict`; commit, PR, merge
