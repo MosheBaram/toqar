@@ -4,10 +4,10 @@
 
 ## 1. SDK (spec: sdk-node)
 
-- [ ] 1.1 Scaffold `packages/sdk` from the analytics-wrapper template lineage; typed emitters over `track()`
-- [ ] 1.2 TDD envelope completion, dev-mode schema validation, kill switch
-- [ ] 1.3 TDD batching/flush/drop-with-warning against a local http sink; bounded retries
-- [ ] 1.4 Commit, PR, merge
+- [x] 1.1 Scaffold `packages/sdk` from the analytics-wrapper template lineage; typed emitters over `track()`
+- [x] 1.2 TDD envelope completion, dev-mode schema validation, kill switch
+- [x] 1.3 TDD batching/flush/drop-with-warning against a local http sink; bounded retries
+- [x] 1.4 Commit, PR, merge
 
 ## 2. Collector (spec: event-collector)
 
