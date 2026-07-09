@@ -152,6 +152,14 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return { ok: true };
   });
 
+  app.get('/v1/autonomy', async (req) => {
+    return store.getAutonomy(req.tenantId);
+  });
+
+  app.put('/v1/autonomy', async (req) => {
+    return store.grantAutonomy(req.tenantId, req.body, API_ACTOR);
+  });
+
   app.get('/v1/finding-rejections', async (req) => {
     return { rejections: await store.listFindingRejections(req.tenantId) };
   });
