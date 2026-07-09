@@ -27,9 +27,9 @@
 
 ## 4. Slack delivery (spec: slack-delivery)
 
-- [ ] 4.1 TDD Block Kit rendering from finding records (SlackFinding shape); webhook transport with delivery records
-- [ ] 4.2 Weekly digest job rendering the validation-report structure with cited numbers
-- [ ] 4.3 Commit, PR, merge
+- [x] 4.1 TDD Block Kit rendering from finding records (SlackFinding shape); webhook transport with delivery records
+- [x] 4.2 Weekly digest job rendering the validation-report structure with cited numbers
+- [x] 4.3 Commit, PR, merge
 
 ## 5. MCP server (spec: mcp-server) + close-out
 
