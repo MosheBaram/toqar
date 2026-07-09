@@ -68,4 +68,35 @@ export const MIGRATIONS: Migration[] = [
         ON instrument_runs (tenant_id, delivered_at DESC);
     `,
   },
+  {
+    id: '004_findings',
+    sql: `
+      CREATE TABLE findings (
+        id text PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        finding jsonb NOT NULL,
+        published_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX findings_tenant_idx ON findings (tenant_id, published_at DESC);
+
+      CREATE TABLE finding_deliveries (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        finding_id text NOT NULL REFERENCES findings(id),
+        channel text NOT NULL,
+        status text NOT NULL,
+        detail text,
+        attempted_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE finding_rejections (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        reason text NOT NULL,
+        draft jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `,
+  },
 ];

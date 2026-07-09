@@ -128,5 +128,33 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return store.listInstrumentRuns(req.tenantId);
   });
 
+  app.post('/v1/findings', async (req, reply) => {
+    const result = await store.publishFinding(req.tenantId, req.body, API_ACTOR);
+    if ('rejected' in result) {
+      return reply.code(400).send({ error: 'uncited_numbers', uncited: result.uncited });
+    }
+    return result;
+  });
+
+  app.get('/v1/findings', async (req) => {
+    return { findings: await store.listFindings(req.tenantId) };
+  });
+
+  app.get<{ Params: { id: string } }>('/v1/findings/:id', async (req, reply) => {
+    const finding = await store.getFinding(req.tenantId, req.params.id);
+    if (!finding) return reply.code(404).send({ error: 'not_found' });
+    return finding;
+  });
+
+  app.post<{ Params: { id: string } }>('/v1/findings/:id/deliveries', async (req, reply) => {
+    const found = await store.recordDelivery(req.tenantId, req.params.id, req.body);
+    if (!found) return reply.code(404).send({ error: 'not_found' });
+    return { ok: true };
+  });
+
+  app.get('/v1/finding-rejections', async (req) => {
+    return { rejections: await store.listFindingRejections(req.tenantId) };
+  });
+
   return app;
 }
