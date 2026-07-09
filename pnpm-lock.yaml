@@ -179,9 +179,18 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.2.12
         version: 0.2.17
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.0.0
+        version: 1.29.0(zod@3.25.76)
+      '@toqar/analysis-agent':
+        specifier: workspace:*
+        version: link:../analysis-agent
       '@toqar/collector':
         specifier: workspace:*
         version: link:../collector
+      '@toqar/mcp-server':
+        specifier: workspace:*
+        version: link:../mcp-server
       '@toqar/registry-service':
         specifier: workspace:*
         version: link:../registry-service
