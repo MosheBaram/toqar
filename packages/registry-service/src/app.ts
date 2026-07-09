@@ -106,5 +106,27 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return map;
   });
 
+  app.post('/v1/registry/instrument-runs', async (req) => {
+    return store.recordInstrumentRun(req.tenantId, req.body, API_ACTOR);
+  });
+
+  app.patch<{ Params: { id: string }; Body: { outcome?: unknown } }>(
+    '/v1/registry/instrument-runs/:id',
+    async (req, reply) => {
+      const found = await store.updateRunOutcome(
+        req.tenantId,
+        req.params.id,
+        req.body?.outcome,
+        API_ACTOR,
+      );
+      if (!found) return reply.code(404).send({ error: 'not_found' });
+      return { ok: true };
+    },
+  );
+
+  app.get('/v1/registry/instrument-runs', async (req) => {
+    return store.listInstrumentRuns(req.tenantId);
+  });
+
   return app;
 }
