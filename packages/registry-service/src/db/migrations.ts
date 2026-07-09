@@ -128,4 +128,62 @@ export const MIGRATIONS: Migration[] = [
         SELECT 'tk_' || id, id, token_hash, 'tok_migrated', 'api:full' FROM tenants;
     `,
   },
+  {
+    id: '007_rls',
+    sql: `
+      CREATE ROLE toqar_app NOLOGIN;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO toqar_app;
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO toqar_app;
+
+      ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_tenants ON tenants
+        USING (id = current_setting('app.tenant', true))
+        WITH CHECK (id = current_setting('app.tenant', true));
+
+      ALTER TABLE registry_entries ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_registry_entries ON registry_entries
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_audit_log ON audit_log
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE repo_context ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_repo_context ON repo_context
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE instrument_runs ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_instrument_runs ON instrument_runs
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE findings ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_findings ON findings
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE finding_deliveries ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_finding_deliveries ON finding_deliveries
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE finding_rejections ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_finding_rejections ON finding_rejections
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE autonomy_grants ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_autonomy_grants ON autonomy_grants
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+
+      ALTER TABLE tenant_tokens ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_tenant_tokens ON tenant_tokens
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+    `,
+  },
 ];
