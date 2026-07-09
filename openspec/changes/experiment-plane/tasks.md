@@ -12,10 +12,10 @@
 
 ## 2. Experiment records (spec: registry-backend delta)
 
-- [ ] 2.1 Migration: `experiments` + `experiment_verdicts` (tenant-scoped, RLS + audit)
-- [ ] 2.2 TDD store + routes: create/transition/list experiments, write/read verdicts; lifecycle audit; tenant-isolation scenario
-- [ ] 2.3 Register the new routes in `packages/isolation-suite` (the standing adversarial suite)
-- [ ] 2.4 Commit, PR, merge
+- [x] 2.1 Migration: `experiments` + `experiment_verdicts` (tenant-scoped, RLS + audit)
+- [x] 2.2 TDD store + routes: create/transition/list experiments, write/read verdicts; lifecycle audit; tenant-isolation scenario
+- [x] 2.3 Register the new routes in `packages/isolation-suite` (the standing adversarial suite)
+- [x] 2.4 Commit, PR, merge
 
 ## 3. Flag integration (spec: flags-integration)
 

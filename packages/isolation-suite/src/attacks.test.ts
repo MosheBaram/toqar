@@ -25,6 +25,7 @@ let attacker: { tenantId: string; token: string };
 let attackerEventsToken: string;
 let revokedToken: string;
 let victimFindingId: string;
+let victimExperimentId: string;
 
 beforeAll(async () => {
   await migrate(db, MIGRATIONS);
@@ -64,6 +65,20 @@ beforeAll(async () => {
   );
   if ('rejected' in published) throw new Error('fixture finding rejected');
   victimFindingId = published.finding_id;
+
+  const exp = await store.createExperiment(
+    victim.tenantId,
+    {
+      hypothesis: 'victim_secret_marker hypothesis',
+      target_metric: 'task_success_rate',
+      direction: 'increase',
+      from_query_ids: ['q_aaaaaaaaaaaaaaaa'],
+      guardrails: ['override_rate'],
+      flag_provider: 'posthog',
+    },
+    'suite',
+  );
+  victimExperimentId = exp.experiment_id;
 });
 
 afterAll(async () => {
@@ -98,6 +113,8 @@ const SURFACES: Record<string, Surface> = {
   'finding rejections': { app: () => registryApp, method: 'GET', url: () => '/v1/finding-rejections' },
   autonomy: { app: () => registryApp, method: 'GET', url: () => '/v1/autonomy' },
   tokens: { app: () => registryApp, method: 'GET', url: () => '/v1/tokens' },
+  experiments: { app: () => registryApp, method: 'GET', url: () => '/v1/experiments' },
+  'experiment by id': { app: () => registryApp, method: 'GET', url: () => `/v1/experiments/${victimExperimentId}` },
   'collector events': {
     app: () => collectorApp,
     method: 'POST',
