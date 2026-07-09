@@ -4,12 +4,12 @@
 
 ## 1. Package + primitives (spec: analysis-primitives)
 
-- [ ] 1.1 Scaffold `packages/analysis` (zero runtime deps beyond zod; no Anthropic, ever)
-- [ ] 1.2 TDD anomaly detection (z/MAD/IQR, rolling baselines) — extract from `quarry/anomaly-detection.ts`, sever imports, provenance docblock
-- [ ] 1.3 TDD changepoint detection (step location + magnitude + significance)
-- [ ] 1.4 TDD segmentation drill-down (contribution ranking) and correlation ranking (aligned windows, coefficients-not-causality)
-- [ ] 1.5 TDD gap handling: missing windows explicit everywhere (no interpolation)
-- [ ] 1.6 Commit, PR, merge
+- [x] 1.1 Scaffold `packages/analysis` (zero runtime deps beyond zod; no Anthropic, ever)
+- [x] 1.2 TDD anomaly detection (z/MAD/IQR, rolling baselines) — extract from `quarry/anomaly-detection.ts`, sever imports, provenance docblock
+- [x] 1.3 TDD changepoint detection (step location + magnitude + significance)
+- [x] 1.4 TDD segmentation drill-down (contribution ranking) and correlation ranking (aligned windows, coefficients-not-causality)
+- [x] 1.5 TDD gap handling: missing windows explicit everywhere (no interpolation)
+- [x] 1.6 Commit, PR, merge
 
 ## 2. Semantic layer (spec: semantic-layer)
 
