@@ -62,6 +62,10 @@ describe('compiled queries', () => {
     expect(segmented.id).not.toBe(plain.id);
   });
 
+  it('rejects compilation without a tenant — unscoped queries are unrepresentable', () => {
+    expect(() => compileMetric('task_success_rate', { ...args, tenantId: '' })).toThrow(/tenant/);
+  });
+
   it('rejects unknown metrics and unknown segment dimensions', () => {
     expect(() => compileMetric('vibes_per_task', args)).toThrow(/unknown metric/);
     expect(() =>

@@ -47,6 +47,19 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
 Nothing else. No ingestion, no dashboard, no services — by design, until
 validation reads green. See `new-repo-handoff/KICKOFF-PROMPT.md` for the full spec.
 
+## Security
+
+Multi-tenant isolation is enforced at two layers — application-level
+tenant scoping plus Postgres row-level security beneath it — and proven
+every CI run by a standing adversarial suite (`packages/isolation-suite`)
+that attacks every service surface with wrong-tenant, wrong-scope,
+absent, and revoked credentials. Tenant tokens are hashed, scoped, and
+revocable. The SOC 2 Type 1 control checklist and operator access
+inventory live in `docs/security/` and are maintained at every change's
+close-out; a CI secret scan blocks credential-shaped strings. Claims
+there are marked `implemented` / `partial` / `planned` honestly —
+encryption-at-rest and backups are deployment-gated and not yet live.
+
 ## Development
 
     pnpm install

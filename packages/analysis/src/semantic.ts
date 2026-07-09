@@ -193,6 +193,9 @@ export function listMetrics(): { name: string; layer: Layer; note?: string }[] {
 export function compileMetric(name: string, args: MetricArgs): MetricQuery {
   const def = METRICS[name];
   if (!def) throw new Error(`unknown metric: ${name}`);
+  // Structural tenant scoping (spec: tenancy): unscoped product queries
+  // are unrepresentable — enforced at runtime for JS callers too.
+  if (!args.tenantId) throw new Error('a tenant is required — unscoped queries are unrepresentable');
   if (args.segmentBy && !SEGMENTS.includes(args.segmentBy)) {
     throw new Error(`unknown segment dimension: ${String(args.segmentBy)}`);
   }
