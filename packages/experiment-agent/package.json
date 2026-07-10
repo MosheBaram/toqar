@@ -17,6 +17,8 @@
   "devDependencies": {
     "@types/node": "^20.14.0",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "^2.0.5",
+    "@toqar/registry-service": "workspace:*",
+    "@electric-sql/pglite": "^0.2.12"
   }
 }

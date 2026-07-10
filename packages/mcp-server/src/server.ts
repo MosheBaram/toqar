@@ -77,5 +77,19 @@ export function createToqarMcpServer(opts: McpServerOptions): McpServer {
     async () => asText(await serviceGet('/v1/registry/events')),
   );
 
+  server.tool(
+    'list_experiments',
+    'List the tenant’s experiments (hypothesis, target metric, status), newest first.',
+    {},
+    async () => asText(await serviceGet('/v1/experiments')),
+  );
+
+  server.tool(
+    'get_verdict',
+    'Fetch one experiment with its verdict: decision, effect estimate, confidence sequence, per-arm samples, guardrail outcomes, and query ids.',
+    { experiment_id: z.string() },
+    async ({ experiment_id }) => asText(await serviceGet(`/v1/experiments/${experiment_id}`)),
+  );
+
   return server;
 }
