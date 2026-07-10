@@ -207,5 +207,14 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return { ok: true };
   });
 
+  app.get('/v1/onboarding', async (req) => {
+    return store.getOnboarding(req.tenantId);
+  });
+
+  app.post('/v1/onboarding/milestone', async (req) => {
+    await store.recordMilestone(req.tenantId, req.body);
+    return { ok: true };
+  });
+
   return app;
 }

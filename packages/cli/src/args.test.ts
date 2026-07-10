@@ -52,6 +52,19 @@ describe('parseArgs — instrument', () => {
   });
 });
 
+describe('parseArgs — onboard', () => {
+  it('parses the repo path', () => {
+    expect(parseArgs(argv('onboard', '../their-repo'))).toEqual({
+      cmd: 'onboard',
+      path: '../their-repo',
+    });
+  });
+
+  it('requires a path', () => {
+    expect(parseArgs(argv('onboard'))).toContain('usage: toqar onboard');
+  });
+});
+
 describe('parseArgs — unknown', () => {
   it('returns usage for an unknown command', () => {
     expect(parseArgs(argv('nope'))).toContain('usage:');

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from './args.js';
 import { runInstrument } from './instrument.js';
+import { runOnboard } from './onboard.js';
 import { runSync } from './sync.js';
 
 const parsed = parseArgs(process.argv);
@@ -17,7 +18,9 @@ const env = {
 const result =
   parsed.cmd === 'sync'
     ? await runSync({ mode: parsed.mode, filePath: parsed.filePath, ...env })
-    : await runInstrument({ repoPath: parsed.path, approve: parsed.approve, ...env });
+    : parsed.cmd === 'onboard'
+      ? await runOnboard({ repoPath: parsed.path, ...env })
+      : await runInstrument({ repoPath: parsed.path, approve: parsed.approve, ...env });
 
 console.log(result.output);
 process.exit(result.code);

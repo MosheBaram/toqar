@@ -220,4 +220,22 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = current_setting('app.tenant', true));
     `,
   },
+  {
+    id: '009_onboarding',
+    sql: `
+      CREATE TABLE onboarding_timeline (
+        tenant_id text PRIMARY KEY REFERENCES tenants(id),
+        connected_at timestamptz,
+        plan_proposed_at timestamptz,
+        plan_approved_at timestamptz,
+        first_event_at timestamptz,
+        first_finding_at timestamptz
+      );
+      GRANT SELECT, INSERT, UPDATE, DELETE ON onboarding_timeline TO toqar_app;
+      ALTER TABLE onboarding_timeline ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_onboarding_timeline ON onboarding_timeline
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+    `,
+  },
 ];
