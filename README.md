@@ -34,7 +34,12 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
   variant PR (gated on autonomy level 2) → sequential monitoring with
   guardrail auto-stop → verdict to the registry as an experiment finding.
 - `apps/web` — the findings feed (filters, evidence drill-down, registry
-  browser, audited autonomy dial) on the design-system tokens.
+  browser, audited autonomy dial, onboarding + benchmark views) on the
+  design-system tokens.
+- `apps/docs` — public docs anchored on the schema spec, with a CI
+  cross-reference gate so docs cannot drift from the code.
+- `packages/billing` — usage meters (reconcile to source), tiers seeded
+  from validation WTP, Stripe references only (no card data).
 - `packages/analysis` — the deterministic layer: 21 TOQAR metrics as
   parameterized ClickHouse SQL with content-hashed citation ids, plus
   pure statistical primitives (anomaly, changepoint, segmentation,

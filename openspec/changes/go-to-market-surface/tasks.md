@@ -35,6 +35,6 @@
 
 ## 5. Design D3 + close-out
 
-- [ ] 5.1 Run Claude Design prompt D3 (marketing site + experiment/benchmark views); sync into `skills/toqar-design`; update `docs/design/claude-design-prompts.md`
-- [ ] 5.2 Wire marketing/benchmark views from the D3 components
-- [ ] 5.3 G3 checklist review against `docs/roadmap.md`; READMEs, root README; `openspec validate --strict`; commit, PR, merge
+- [x] 5.1 Claude Design prompt D3 written (marketing + experiment/benchmark views) in docs/design/claude-design-prompts.md. **Operator-run**: the Claude Design cycle + sync into skills/toqar-design is a human step (as D1/D2 were), tracked in the prompts doc
+- [ ] 5.2 Wire marketing/benchmark views from the D3 components — **blocked on 5.1 operator run**; the benchmark data view + opt-in control already ship in apps/web (group 4), pending the D3 visual layer
+- [x] 5.3 G3 checklist reviewed in docs/roadmap.md (code items met; customers/deploy/SOC-2-report operator-gated); billing + docs READMEs; root README; openspec validate --strict; commit, PR, merge

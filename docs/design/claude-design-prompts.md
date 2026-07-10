@@ -126,10 +126,54 @@ its components from these cards without inventing new patterns.
 
 ---
 
-## Prompt D3 — marketing + experiment/benchmark views (Phase 2)
+## Prompt D3 — marketing + experiment/benchmark views (unlocked 2026-07-10)
 
-Not written yet — draft it when 2.2 is specced, extending `toqar-brand`.
-Scope: marketing site (positioning: "your analytics team, agentic"),
-experiment monitor views (sequential-testing confidence over time,
-guardrail status for TSR/CPCT/Override Rate), opt-in benchmark
-comparison views. Writing it now would speculate past two gates.
+Extend the existing `Toqar Design System` project (reuse `toqar-brand`
+tokens and D2 product components), then paste:
+
+```
+You are designing the Phase 2 surfaces for Toqar, extending the existing
+design system (tokens from toqar-brand; product components from D2).
+
+CONTEXT
+Toqar now closes all three loops: it instruments for you (PRs), analyzes
+for you (findings feed), and iterates for you (experiments → verdicts).
+These surfaces sell that and show the experiment/benchmark data.
+
+DELIVERABLES (grouped as noted)
+1. Marketing site — group "Marketing": hero + sections for a static
+   landing page. Positioning: "your analytics team, agentic." One section
+   per product loop (instrument / analyze / iterate). A pricing section
+   with two tiers (Starter $200/mo, Growth $800/mo) driven by usage
+   limits. Voice per the brand readme — instrument, not billboard; no
+   hype, numbers are the nouns. Light + dark.
+2. Experiment monitor — group "Experiments": the view of a running
+   experiment. A sequential-testing chart (effect estimate with an
+   always-valid confidence sequence that narrows over time, a zero line,
+   the ship/revert boundaries), the current decision chip
+   (inconclusive / ship / revert), per-arm sample counts, and a guardrail
+   status row (TSR, Cost per Completed Task, Override Rate — each ok or
+   breached). Real example: crm_retry variant, +6.1 pts, ship.
+3. Experiment verdict card — group "Experiments": the concluded result as
+   a FindingCard 'experiment' variant (reuse the D2 shape) with the effect,
+   confidence interval, and guardrail outcomes, every number citing a
+   query id.
+4. Benchmark comparison — group "Benchmark": the opt-in cohort view. Show
+   a distribution as an aggregate band (mean ± stddev — NEVER individual
+   points, min, or max: those are other tenants' raw values) with the
+   viewer's own position marked as a percentile. An "insufficient cohort"
+   empty state for below-k cohorts. An opt-in/opt-out control that reads
+   as a deliberate, reversible data-sharing choice.
+
+CONSTRAINTS
+- Same as D1/D2 (self-contained, light+dark, WCAG AA, real example content,
+  mono for identifiers and numbers).
+- Privacy is load-bearing on the benchmark view: the design must make it
+  impossible to read an individual tenant's value — aggregate bands only,
+  no scatter of raw points.
+```
+
+**Definition of done for D3:** the marketing landing page and the
+experiment/benchmark views can be built from these cards. After the run,
+hand the project back to the Claude Code session to sync into
+`skills/toqar-design` and wire the views (change 2.2 tasks 5.1–5.2).
