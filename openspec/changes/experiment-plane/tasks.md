@@ -19,10 +19,10 @@
 
 ## 3. Flag integration (spec: flags-integration)
 
-- [ ] 3.1 `FlagProvider` seam + PostHog adapter; unsupported-provider refusal
-- [ ] 3.2 LaunchDarkly adapter
-- [ ] 3.3 Exposure→arm join verified against the ClickHouse events table (integration job): per-arm TSR/CPCT/Override computable with no new event types
-- [ ] 3.4 Commit, PR, merge
+- [x] 3.1 `FlagProvider` seam + PostHog adapter; unsupported-provider refusal
+- [x] 3.2 LaunchDarkly adapter
+- [x] 3.3 Exposure→arm join verified against the ClickHouse events table (integration job): per-arm TSR/CPCT/Override computable with no new event types
+- [x] 3.4 Commit, PR, merge
 
 ## 4. Experiment agent (spec: experiment-agent)
 

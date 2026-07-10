@@ -281,6 +281,9 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.2.12
         version: 0.2.17
+      '@toqar/experiments':
+        specifier: workspace:*
+        version: link:../experiments
       '@toqar/registry-service':
         specifier: workspace:*
         version: link:../registry-service
