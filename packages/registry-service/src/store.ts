@@ -75,6 +75,19 @@ const autonomyGrantSchema = z.object({
   granted_by: z.string().min(1),
 });
 
+const MILESTONE_COLUMN = {
+  connected: 'connected_at',
+  plan_proposed: 'plan_proposed_at',
+  plan_approved: 'plan_approved_at',
+  first_event: 'first_event_at',
+  first_finding: 'first_finding_at',
+} as const;
+
+const milestoneSchema = z.object({
+  milestone: z.enum(['connected', 'plan_proposed', 'plan_approved', 'first_event', 'first_finding']),
+  at: z.string().datetime({ offset: true }),
+});
+
 const experimentSchema = z.object({
   hypothesis: z.string().min(1),
   target_metric: z.string().min(1),
@@ -599,6 +612,54 @@ export class RegistryStore {
       created_at: String(rows[0]!.created_at),
       ...(rows[0]!.experiment as Record<string, unknown>),
       verdict: verdict.rows.length ? verdict.rows[0]!.verdict : null,
+    };
+  }
+
+  /**
+   * Onboarding milestone timestamps (spec: onboarding). Each milestone
+   * maps to a column; the step and time-to-first-finding derive from
+   * real timestamps — never a scripted "success".
+   */
+  async recordMilestone(tenantId: string, value: unknown): Promise<void> {
+    const parsed = milestoneSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    const column = MILESTONE_COLUMN[parsed.data.milestone];
+    await this.db.query(
+      `INSERT INTO onboarding_timeline (tenant_id, ${column}) VALUES ($1, $2)
+       ON CONFLICT (tenant_id) DO UPDATE SET ${column} = $2`,
+      [tenantId, parsed.data.at],
+    );
+  }
+
+  async getOnboarding(tenantId: string): Promise<Record<string, unknown>> {
+    const { rows } = await this.db.query(
+      'SELECT connected_at, plan_proposed_at, plan_approved_at, first_event_at, first_finding_at FROM onboarding_timeline WHERE tenant_id = $1',
+      [tenantId],
+    );
+    const t = (rows[0] ?? {}) as Record<string, string | null>;
+    const iso = (v: string | null | undefined) => (v ? new Date(String(v)).toISOString() : null);
+    const connected = iso(t.connected_at);
+    const firstFinding = iso(t.first_finding_at);
+    const step = firstFinding
+      ? 'active'
+      : t.first_event_at
+        ? 'awaiting_first_finding'
+        : t.plan_approved_at
+          ? 'awaiting_data'
+          : t.plan_proposed_at
+            ? 'review_plan'
+            : connected
+              ? 'awaiting_plan'
+              : 'connect_repo';
+    return {
+      connected_at: connected,
+      plan_proposed_at: iso(t.plan_proposed_at),
+      plan_approved_at: iso(t.plan_approved_at),
+      first_event_at: iso(t.first_event_at),
+      first_finding_at: firstFinding,
+      current_step: step,
+      time_to_first_finding_ms:
+        connected && firstFinding ? new Date(firstFinding).getTime() - new Date(connected).getTime() : null,
     };
   }
 

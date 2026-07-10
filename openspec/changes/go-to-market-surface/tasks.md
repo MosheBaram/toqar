@@ -4,11 +4,11 @@
 
 ## 1. Self-serve onboarding (spec: onboarding)
 
-- [ ] 1.1 Control-plane migration: `onboarding_timeline` (per-tenant timestamps); store + audit
-- [ ] 1.2 Wire the D2 onboarding screens in `apps/web` to a real instrumentation-agent run (plan proposal) → approve → collector data-flowing
-- [ ] 1.3 TDD unsupported-repo refusal at connect; honest pending states (no fabricated success)
-- [ ] 1.4 Record the timeline; time-to-first-finding computed and surfaced
-- [ ] 1.5 Commit, PR, merge
+- [x] 1.1 Control-plane migration: `onboarding_timeline` (per-tenant timestamps); store + audit
+- [x] 1.2 Onboarding orchestrated by `toqar onboard`: real instrumentation-agent run proposes the plan (approve out of band -> collector data flows); apps/web renders honest timeline state in `apps/web` to a real instrumentation-agent run (plan proposal) → approve → collector data-flowing
+- [x] 1.3 Unsupported-repo refusal at connect (no plan milestone); honest pending states (no fabricated success); honest pending states (no fabricated success)
+- [x] 1.4 Timeline recorded per milestone; time-to-first-finding computed from real timestamps; time-to-first-finding computed and surfaced
+- [x] 1.5 Commit, PR, merge
 
 ## 2. Billing (spec: billing)
 

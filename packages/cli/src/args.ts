@@ -2,10 +2,11 @@ import type { SyncConfig } from './sync.js';
 
 export type ParsedArgs =
   | { cmd: 'sync'; mode: SyncConfig['mode']; filePath: string }
-  | { cmd: 'instrument'; path: string; approve: boolean };
+  | { cmd: 'instrument'; path: string; approve: boolean }
+  | { cmd: 'onboard'; path: string };
 
 const USAGE =
-  'usage: toqar sync [--apply | --pull] [--file <path>] | toqar instrument <path> [--approve]';
+  'usage: toqar sync [--apply | --pull] [--file <path>] | toqar instrument <path> [--approve] | toqar onboard <path>';
 
 /** Parses toqar argv; returns a usage/error string on bad input. */
 export function parseArgs(argv: string[]): ParsedArgs | string {
@@ -25,6 +26,12 @@ export function parseArgs(argv: string[]): ParsedArgs | string {
     const path = args[1];
     if (!path || path.startsWith('--')) return 'usage: toqar instrument <path> [--approve]';
     return { cmd: 'instrument', path, approve: args.includes('--approve') };
+  }
+
+  if (args[0] === 'onboard') {
+    const path = args[1];
+    if (!path || path.startsWith('--')) return 'usage: toqar onboard <path>';
+    return { cmd: 'onboard', path };
   }
 
   return USAGE;
