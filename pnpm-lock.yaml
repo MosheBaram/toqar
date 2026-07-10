@@ -29,6 +29,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@toqar/analysis':
+        specifier: workspace:*
+        version: link:../../packages/analysis
       '@toqar/registry':
         specifier: workspace:*
         version: link:../../packages/registry

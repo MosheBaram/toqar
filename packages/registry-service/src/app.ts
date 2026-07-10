@@ -234,5 +234,14 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return { ok: true };
   });
 
+  app.get('/v1/benchmark/optin', async (req) => {
+    return store.getBenchmarkOptin(req.tenantId);
+  });
+
+  app.put('/v1/benchmark/optin', async (req) => {
+    await store.setBenchmarkOptin(req.tenantId, req.body, API_ACTOR);
+    return { ok: true };
+  });
+
   return app;
 }
