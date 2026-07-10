@@ -116,6 +116,8 @@ const SURFACES: Record<string, Surface> = {
   experiments: { app: () => registryApp, method: 'GET', url: () => '/v1/experiments' },
   'experiment by id': { app: () => registryApp, method: 'GET', url: () => `/v1/experiments/${victimExperimentId}` },
   onboarding: { app: () => registryApp, method: 'GET', url: () => '/v1/onboarding' },
+  billing: { app: () => registryApp, method: 'GET', url: () => '/v1/billing' },
+  'billing invoices': { app: () => registryApp, method: 'GET', url: () => '/v1/billing/invoices' },
   'collector events': {
     app: () => collectorApp,
     method: 'POST',

@@ -75,6 +75,19 @@ const autonomyGrantSchema = z.object({
   granted_by: z.string().min(1),
 });
 
+const billingAccountSchema = z.object({
+  tier: z.enum(['starter', 'growth']),
+  customer_id: z.string().min(1).nullish(),
+  subscription_id: z.string().min(1).nullish(),
+});
+
+const invoiceSchema = z.object({
+  stripe_invoice_id: z.string().min(1),
+  amount_usd: z.number().nonnegative(),
+  period_start: z.string().datetime({ offset: true }),
+  period_end: z.string().datetime({ offset: true }),
+});
+
 const MILESTONE_COLUMN = {
   connected: 'connected_at',
   plan_proposed: 'plan_proposed_at',
@@ -661,6 +674,47 @@ export class RegistryStore {
       time_to_first_finding_ms:
         connected && firstFinding ? new Date(firstFinding).getTime() - new Date(connected).getTime() : null,
     };
+  }
+
+  /** Billing account: tier + Stripe provider references. No card data, ever. */
+  async getBilling(tenantId: string): Promise<Record<string, unknown>> {
+    const { rows } = await this.db.query(
+      'SELECT tier, customer_id, subscription_id FROM billing_accounts WHERE tenant_id = $1',
+      [tenantId],
+    );
+    const a = (rows[0] ?? {}) as Record<string, string | null>;
+    return {
+      tier: a.tier ?? 'starter',
+      customer_id: a.customer_id ?? null,
+      subscription_id: a.subscription_id ?? null,
+    };
+  }
+
+  async setBilling(tenantId: string, value: unknown): Promise<void> {
+    const parsed = billingAccountSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    await this.db.query(
+      `INSERT INTO billing_accounts (tenant_id, tier, customer_id, subscription_id) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tenant_id) DO UPDATE SET tier = $2, customer_id = $3, subscription_id = $4, updated_at = now()`,
+      [tenantId, parsed.data.tier, parsed.data.customer_id ?? null, parsed.data.subscription_id ?? null],
+    );
+  }
+
+  async recordInvoice(tenantId: string, value: unknown): Promise<void> {
+    const parsed = invoiceSchema.safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    await this.db.query(
+      'INSERT INTO billing_invoices (tenant_id, stripe_invoice_id, amount_usd, period_start, period_end) VALUES ($1, $2, $3, $4, $5)',
+      [tenantId, parsed.data.stripe_invoice_id, parsed.data.amount_usd, parsed.data.period_start, parsed.data.period_end],
+    );
+  }
+
+  async listInvoices(tenantId: string): Promise<Record<string, unknown>[]> {
+    const { rows } = await this.db.query(
+      'SELECT stripe_invoice_id, amount_usd, period_start, period_end, created_at FROM billing_invoices WHERE tenant_id = $1 ORDER BY created_at DESC',
+      [tenantId],
+    );
+    return rows;
   }
 
   async listAudit(tenantId: string, limit = 100): Promise<AuditRecord[]> {

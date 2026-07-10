@@ -238,4 +238,34 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = current_setting('app.tenant', true));
     `,
   },
+  {
+    id: '010_billing',
+    sql: `
+      CREATE TABLE billing_accounts (
+        tenant_id text PRIMARY KEY REFERENCES tenants(id),
+        tier text NOT NULL DEFAULT 'starter',
+        customer_id text,
+        subscription_id text,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE billing_invoices (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        stripe_invoice_id text NOT NULL,
+        amount_usd double precision NOT NULL,
+        period_start timestamptz NOT NULL,
+        period_end timestamptz NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      GRANT SELECT, INSERT, UPDATE, DELETE ON billing_accounts, billing_invoices TO toqar_app;
+      ALTER TABLE billing_accounts ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_billing_accounts ON billing_accounts
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+      ALTER TABLE billing_invoices ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_billing_invoices ON billing_invoices
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+    `,
+  },
 ];

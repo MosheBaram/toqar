@@ -12,11 +12,11 @@
 
 ## 2. Billing (spec: billing)
 
-- [ ] 2.1 Scaffold `packages/billing`; usage meters over `toqar.events` (events, tasks, agent runs) — reconcile-to-source tests
-- [ ] 2.2 Tier definitions in code seeded from `docs/validation/scorecard.md` WTP; plan/usage-against-limit endpoint
-- [ ] 2.3 Stripe integration (customer/subscription refs only; assert no card data stored)
-- [ ] 2.4 Tenant-isolated usage/invoice store (RLS + audit); register routes in `packages/isolation-suite`
-- [ ] 2.5 Commit, PR, merge
+- [x] 2.1 Scaffold `packages/billing`; usage meters over `toqar.events` — reconcile-to-source verified against real ClickHouse (events_ingested == direct count); usage meters over `toqar.events` (events, tasks, agent runs) — reconcile-to-source tests
+- [x] 2.2 Tier definitions in code seeded from WTP; GET /v1/billing shows tier + refs; planFor computes usage-against-limit seeded from `docs/validation/scorecard.md` WTP; plan/usage-against-limit endpoint
+- [x] 2.3 Stripe references only (customer_id/subscription_id) — no card data stored (asserted by a source scan and the store shape) (customer/subscription refs only; assert no card data stored)
+- [x] 2.4 Tenant-isolated billing_accounts + billing_invoices (migration 010, RLS + grants); billing surfaces registered in the isolation suite (RLS + audit); register routes in `packages/isolation-suite`
+- [x] 2.5 Commit, PR, merge
 
 ## 3. Public docs (spec: public-docs)
 
