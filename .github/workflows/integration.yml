@@ -6,6 +6,7 @@ on:
       - "packages/pipeline/**"
       - "packages/analysis/**"
       - "packages/experiments/**"
+      - "packages/billing/**"
       - "packages/collector/**"
       - "packages/sdk/**"
       - "infra/**"
@@ -16,6 +17,7 @@ on:
       - "packages/pipeline/**"
       - "packages/analysis/**"
       - "packages/experiments/**"
+      - "packages/billing/**"
       - "packages/collector/**"
       - "infra/**"
 

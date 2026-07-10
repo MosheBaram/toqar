@@ -216,5 +216,23 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
     return { ok: true };
   });
 
+  app.get('/v1/billing', async (req) => {
+    return store.getBilling(req.tenantId);
+  });
+
+  app.put('/v1/billing', async (req) => {
+    await store.setBilling(req.tenantId, req.body);
+    return { ok: true };
+  });
+
+  app.get('/v1/billing/invoices', async (req) => {
+    return { invoices: await store.listInvoices(req.tenantId) };
+  });
+
+  app.post('/v1/billing/invoices', async (req) => {
+    await store.recordInvoice(req.tenantId, req.body);
+    return { ok: true };
+  });
+
   return app;
 }

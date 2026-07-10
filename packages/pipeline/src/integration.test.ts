@@ -5,6 +5,7 @@ import { createPgliteExecutor } from '@toqar/registry-service/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { compileMetric } from '@toqar/analysis';
 import { perArmMetricSql } from '@toqar/experiments';
+import { usageMeterSql } from '@toqar/billing';
 import { createClickHouse, ensureSchema, insertRows } from './clickhouse.js';
 import { createMetricExecutor } from './metric-executor.js';
 import { createRedpandaSink, startEventsConsumer, type ConsumerHandle } from './redpanda.js';
@@ -271,5 +272,38 @@ suite('collector → Redpanda → ClickHouse', () => {
     const byArm = Object.fromEntries(rows.map((r) => [r.arm, Number(r.value)]));
     expect(byArm.control).toBeCloseTo(0.5, 5);
     expect(byArm.variant).toBeCloseTo(1.0, 5);
+  });
+
+  it('billing usage meters reconcile to a direct source query', async () => {
+    const billTenant = `t_bill_${Date.now()}`;
+    const base = {
+      schema_version: SCHEMA_VERSION,
+      task_type: 'reply_to_lead',
+      agent: { name: 'sdr-agent', version: '1.0.0' },
+      tenant_id: billTenant,
+    };
+    const rows = [
+      toRow({ ...base, event: 'task_started', event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:00.000Z', task_id: 'task_1', run_id: 'run_1', initiator: 'api' })!,
+      toRow({ ...base, event: 'step_executed', event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:01.000Z', task_id: 'task_1', run_id: 'run_1', step_id: 's1', step_index: 0, step_type: 'tool_call', latency_ms: 5, status: 'ok' })!,
+      toRow({ ...base, event: 'task_completed', event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:02.000Z', task_id: 'task_1', run_id: 'run_1', verification: 'verified', duration_ms: 1, steps_total: 1 })!,
+      toRow({ ...base, event: 'task_started', event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:03.000Z', task_id: 'task_2', run_id: 'run_1', initiator: 'api' })!,
+    ];
+    await insertRows(ch, rows);
+
+    const window = { tenantId: billTenant, from: '2026-07-01 00:00:00.000', to: '2026-07-08 00:00:00.000' };
+    const params = { query_params: window, format: 'JSONEachRow' as const };
+    const meter = async (sql: string) =>
+      Number((((await (await ch.query({ query: sql, ...params })).json()) as { value: number }[])[0])?.value ?? 0);
+
+    const events = await meter(usageMeterSql('events_ingested', window));
+    const tasks = await meter(usageMeterSql('tasks_tracked', window));
+
+    // reconcile against a direct count
+    const direct = await meter(
+      `SELECT count() AS value FROM toqar.events FINAL WHERE tenant_id = {tenantId:String} AND timestamp >= {from:DateTime64(3)} AND timestamp < {to:DateTime64(3)}`,
+    );
+    expect(events).toBe(direct);
+    expect(events).toBe(4);
+    expect(tasks).toBe(2);
   });
 });
