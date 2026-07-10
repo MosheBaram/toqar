@@ -26,11 +26,11 @@
 
 ## 4. Experiment agent (spec: experiment-agent)
 
-- [ ] 4.1 Scaffold `packages/experiment-agent`; hypothesis-from-finding record creation with cited premise
-- [ ] 4.2 Variant PR via the instrumentation implementer/PR assembly, gated on autonomy level 2 (level-1 refusal scenario)
-- [ ] 4.3 Monitor loop: sequential test on target metric + guardrails (TSR/CPCT/Override); guardrail auto-stop scenario
-- [ ] 4.4 Verdict written to the registry and surfaced as an `experiment` finding (feed/Slack/MCP inherit it); inconclusive-stays-inconclusive scenario
-- [ ] 4.5 Commit, PR, merge
+- [x] 4.1 Scaffold `packages/experiment-agent`; hypothesis-from-finding record creation with cited premise
+- [x] 4.2 Variant PR via the instrumentation implementer/PR assembly (assembleVariantPr seam; production wires the instrumentation agent), gated on autonomy level 2, gated on autonomy level 2 (level-1 refusal scenario)
+- [x] 4.3 Monitor loop: sequential test on target metric + guardrails (TSR/CPCT/Override); guardrail auto-stop scenario
+- [x] 4.4 Verdict written to the registry and surfaced as an `experiment` finding (feed/Slack/MCP inherit it); inconclusive-stays-inconclusive scenario
+- [x] 4.5 Commit, PR, merge
 
 ## 5. End-to-end + close-out
 
