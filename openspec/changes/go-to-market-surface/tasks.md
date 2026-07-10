@@ -27,11 +27,11 @@
 
 ## 4. Opt-in benchmarking (spec: benchmarking-optin)
 
-- [ ] 4.1 Migration: per-tenant benchmark opt-in state (audited); opt-in/opt-out endpoints
-- [ ] 4.2 TDD cohort aggregation over opted-in tenants' semantic-layer results; non-opted-in exclusion
-- [ ] 4.3 TDD k-anonymity: below-k suppression ("insufficient cohort"), no re-identification, reconcile-to-source
-- [ ] 4.4 Benchmark view in `apps/web` (cohort distribution + own position; never another tenant's identity)
-- [ ] 4.5 Commit, PR, merge
+- [x] 4.1 Migration 011 benchmark_optin (audited, RLS + grants); opt-in/opt-out endpoints (audited); opt-in/opt-out endpoints
+- [x] 4.2 computeBenchmark aggregates opted-in tenants only (optedInTenants is the one deliberate cross-tenant read, owner-run); non-opted-in excluded' semantic-layer results; non-opted-in exclusion
+- [x] 4.3 k-anonymity: below-k suppression (insufficient cohort), no raw value/min/max/tenant-id in output (a re-identification leak in the first design was caught and fixed — mean/stddev only), mean reconciles to source: below-k suppression ("insufficient cohort"), no re-identification, reconcile-to-source
+- [x] 4.4 Benchmark view in `apps/web`: opt-in toggle against the real service, cohort + own percentile, suppressed shown without a number, no other tenant identity (cohort distribution + own position; never another tenant's identity)
+- [x] 4.5 Commit, PR, merge
 
 ## 5. Design D3 + close-out
 

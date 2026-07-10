@@ -31,7 +31,7 @@ export class ConflictError extends Error {
 export interface AuditRecord {
   id: number;
   actor: string;
-  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy' | 'token' | 'experiment';
+  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy' | 'token' | 'experiment' | 'benchmark';
   /** Registry event name, or the repo for seam-map operations. */
   event: string;
   diff: { before: unknown; after: unknown };
@@ -715,6 +715,36 @@ export class RegistryStore {
       [tenantId],
     );
     return rows;
+  }
+
+  /** Benchmark opt-in state (spec: benchmarking-optin). Strictly opt-in, audited. */
+  async getBenchmarkOptin(tenantId: string): Promise<{ opted_in: boolean }> {
+    const { rows } = await this.db.query('SELECT opted_in FROM benchmark_optin WHERE tenant_id = $1', [tenantId]);
+    return { opted_in: Boolean(rows[0]?.opted_in ?? false) };
+  }
+
+  async setBenchmarkOptin(tenantId: string, value: unknown, actor: string): Promise<void> {
+    const parsed = z.object({ opted_in: z.boolean() }).safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    await this.db.transaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO benchmark_optin (tenant_id, opted_in) VALUES ($1, $2)
+         ON CONFLICT (tenant_id) DO UPDATE SET opted_in = $2, updated_at = now()`,
+        [tenantId, parsed.data.opted_in],
+      );
+      await this.audit(tx, tenantId, actor, 'benchmark', parsed.data.opted_in ? 'opt_in' : 'opt_out', null, {
+        opted_in: parsed.data.opted_in,
+      });
+    });
+  }
+
+  /**
+   * The one deliberate cross-tenant read: the opted-in cohort. Runs as the
+   * owner (not tenant-scoped) — only tenants that explicitly opted in appear.
+   */
+  async optedInTenants(): Promise<string[]> {
+    const { rows } = await this.db.query('SELECT tenant_id FROM benchmark_optin WHERE opted_in = true');
+    return rows.map((r) => r.tenant_id as string);
   }
 
   async listAudit(tenantId: string, limit = 100): Promise<AuditRecord[]> {

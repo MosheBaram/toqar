@@ -268,4 +268,19 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = current_setting('app.tenant', true));
     `,
   },
+  {
+    id: '011_benchmark_optin',
+    sql: `
+      CREATE TABLE benchmark_optin (
+        tenant_id text PRIMARY KEY REFERENCES tenants(id),
+        opted_in boolean NOT NULL DEFAULT false,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      GRANT SELECT, INSERT, UPDATE, DELETE ON benchmark_optin TO toqar_app;
+      ALTER TABLE benchmark_optin ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_benchmark_optin ON benchmark_optin
+        USING (tenant_id = current_setting('app.tenant', true))
+        WITH CHECK (tenant_id = current_setting('app.tenant', true));
+    `,
+  },
 ];

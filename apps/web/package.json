@@ -12,7 +12,8 @@
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@toqar/registry": "workspace:*"
+    "@toqar/registry": "workspace:*",
+    "@toqar/analysis": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.12",
