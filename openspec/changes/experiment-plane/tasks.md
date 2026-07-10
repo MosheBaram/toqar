@@ -34,6 +34,6 @@
 
 ## 5. End-to-end + close-out
 
-- [ ] 5.1 E2E on the fixture app: finding → hypothesis → variant PR (level 2) → simulated exposure/outcome stream → sequential verdict → registry record → experiment finding
-- [ ] 5.2 MCP: expose experiments/verdicts read-only (`list_experiments`, `get_verdict`) with the citation contract
-- [ ] 5.3 READMEs, root README, `openspec validate --strict`; commit, PR, merge
+- [x] 5.1 E2E: finding → hypothesis → variant PR (level 2) → sequential verdict → registry record → experiment finding, over the real registry service via HTTP: finding → hypothesis → variant PR (level 2) → simulated exposure/outcome stream → sequential verdict → registry record → experiment finding
+- [x] 5.2 MCP: expose experiments/verdicts read-only (`list_experiments`, `get_verdict`); read-only surface asserted in both the MCP test and the isolation suite (`list_experiments`, `get_verdict`) with the citation contract
+- [x] 5.3 READMEs, root README, `openspec validate --strict`; commit, PR, merge

@@ -26,7 +26,13 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
   sweeps, the question-log eval harness, Slack Block Kit delivery, and
   the automated weekly digest — every published number cited.
 - `packages/mcp-server` — read-only MCP surface for customers' own
-  agents: metrics with citations, findings, registry.
+  agents: metrics with citations, findings, registry, experiments.
+- `packages/experiments` — always-valid sequential testing (bounded
+  false-positives under continuous peeking) + flag-provider seam
+  (PostHog/LaunchDarkly) + per-arm guardrail SQL. Pure, no LLM.
+- `packages/experiment-agent` — the third loop: finding → hypothesis →
+  variant PR (gated on autonomy level 2) → sequential monitoring with
+  guardrail auto-stop → verdict to the registry as an experiment finding.
 - `apps/web` — the findings feed (filters, evidence drill-down, registry
   browser, audited autonomy dial) on the design-system tokens.
 - `packages/analysis` — the deterministic layer: 21 TOQAR metrics as

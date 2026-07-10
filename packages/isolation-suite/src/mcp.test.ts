@@ -72,6 +72,8 @@ describe('MCP surface isolation', () => {
     expect(tools.tools.map((t) => t.name).sort()).toEqual([
       'get_finding',
       'get_registry',
+      'get_verdict',
+      'list_experiments',
       'list_findings',
       'query_metric',
     ]);

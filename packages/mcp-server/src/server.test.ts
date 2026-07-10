@@ -69,7 +69,14 @@ describe('toqar MCP server', () => {
   it('exposes a read-only tool surface', async () => {
     const tools = await client.listTools();
     const names = tools.tools.map((t) => t.name).sort();
-    expect(names).toEqual(['get_finding', 'get_registry', 'list_findings', 'query_metric']);
+    expect(names).toEqual([
+      'get_finding',
+      'get_registry',
+      'get_verdict',
+      'list_experiments',
+      'list_findings',
+      'query_metric',
+    ]);
   });
 
   it('query_metric returns the value with its citation (the q_ contract)', async () => {
