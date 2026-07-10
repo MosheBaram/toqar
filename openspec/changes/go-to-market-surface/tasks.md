@@ -20,10 +20,10 @@
 
 ## 3. Public docs (spec: public-docs)
 
-- [ ] 3.1 Scaffold `apps/docs` (static build; schema-spec README as anchor)
-- [ ] 3.2 Product docs (SDK, OTLP, MCP, onboarding) + the one-post-per-TOQAR-layer content series with real metric definitions
-- [ ] 3.3 CI cross-reference gate: documented event/metric names must exist in `TOQAR_EVENT_NAMES` + semantic-layer catalog; aspirational-doc-blocked scenario
-- [ ] 3.4 Commit, PR, merge
+- [x] 3.1 Scaffold `apps/docs` (markdown content; schema-spec README as anchor) (static build; schema-spec README as anchor)
+- [x] 3.2 Product docs (SDK, OTLP, MCP, onboarding) + one-post-per-TOQAR-layer content series with real metric definitions (SDK, OTLP, MCP, onboarding) + the one-post-per-TOQAR-layer content series with real metric definitions
+- [x] 3.3 CI cross-reference gate: docs claims validated against TOQAR_EVENT_NAMES + semantic-layer catalog; the docs build fails on an aspirational claim (verified): documented event/metric names must exist in `TOQAR_EVENT_NAMES` + semantic-layer catalog; aspirational-doc-blocked scenario
+- [x] 3.4 Commit, PR, merge
 
 ## 4. Opt-in benchmarking (spec: benchmarking-optin)
 
