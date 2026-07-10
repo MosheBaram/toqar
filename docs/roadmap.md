@@ -176,15 +176,23 @@ G1 metrics still holding on the platform.
   - **Design D3**: marketing site + experiment/benchmark views (Claude Design, prompts doc).
 - **DoD:** a cold signup reaches their first real finding without a human from us in the loop.
 
-**Gate G3 — definition of "fully functional shipped product":**
+**Gate G3 — definition of "fully functional shipped product"** (reviewed
+2026-07-10 at go-to-market-surface close-out; ☑ built, ☐ needs
+customers/deploy):
 
-- [ ] 3+ paying customers, ≥1 from outside the design-partner cohort
-- [ ] All three loops live: instruments for you (PRs), analyzes for you (findings feed/Slack/MCP), iterates for you (experiment verdicts to registry)
-- [ ] Autonomy dial shipped (read-only → instr. PRs → experiment PRs per customer)
-- [ ] SLOs: collector 99.9% ingest success; finding latency < 24h from anomaly
-- [ ] SOC 2 Type 1 report in hand; Type 2 window open
-- [ ] Docs, onboarding, billing self-serve
-- [ ] CI/CD green across all services; every service has the quality-gates treatment (typecheck, tests, anti-slop)
+- [ ] 3+ paying customers, ≥1 from outside the design-partner cohort — **not met** (no customers yet; the billing + onboarding machinery to acquire them is built)
+- [x] All three loops live in code: instruments for you (instrumentation-agent PRs), analyzes for you (analysis-agent → findings feed/Slack/MCP), iterates for you (experiment-agent verdicts to registry)
+- [x] Autonomy dial shipped (read-only → instrumentation PRs → experiment PRs per customer; experiment PRs gated at level 2)
+- [ ] SLOs: collector 99.9% ingest success; finding latency < 24h — **needs the production deploy** to measure (pipeline proven in the integration job; the deploy is operator-gated, ingestion 5.1)
+- [ ] SOC 2 Type 1 report in hand; Type 2 window open — **partial**: controls checklist + evidence discipline built (`docs/security/soc2-controls.md`); the report needs the deploy's encryption/backup evidence and an auditor (G2 decision)
+- [x] Docs, onboarding, billing self-serve — public docs (with the cross-reference gate), `toqar onboard`, and usage-tiered billing are built
+- [x] CI/CD green across all services; every service has the quality-gates treatment — CI (typecheck, tests, anti-slop, secret scan) + the compose integration job, green across all 15 packages/apps
+
+**Summary:** every G3 item that is *code* is built and green. The three
+remaining items (paying customers, deploy-measured SLOs, the SOC 2 report)
+require the operator-gated production deploy and real customers — they
+cannot be closed by building. The platform is feature-complete against the
+roadmap; shipping it is now an operational act, not an engineering one.
 
 ---
 
