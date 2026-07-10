@@ -4,6 +4,7 @@ import { migrate, MIGRATIONS, RegistryStore } from '@toqar/registry-service';
 import { createPgliteExecutor } from '@toqar/registry-service/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { compileMetric } from '@toqar/analysis';
+import { perArmMetricSql } from '@toqar/experiments';
 import { createClickHouse, ensureSchema, insertRows } from './clickhouse.js';
 import { createMetricExecutor } from './metric-executor.js';
 import { createRedpandaSink, startEventsConsumer, type ConsumerHandle } from './redpanda.js';
@@ -228,5 +229,47 @@ suite('collector → Redpanda → ClickHouse', () => {
     });
     const recordRows = (await record.json()) as { metric: string }[];
     expect(recordRows[0]?.metric).toBe('task_success_rate');
+  });
+
+  it('computes guardrail metrics per experiment arm from existing events (no new event types)', async () => {
+    const expTenant = `t_exp_${Date.now()}`;
+    const base = {
+      schema_version: SCHEMA_VERSION,
+      run_id: 'run_1',
+      task_type: 'reply_to_lead',
+      agent: { name: 'sdr-agent', version: '1.0.0' },
+      tenant_id: expTenant,
+    };
+    const mkEvent = (event: string, taskId: string, extra: Record<string, unknown> = {}) =>
+      toRow({ ...base, event, event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:00.000Z', task_id: taskId, ...extra })!;
+
+    // control: 1 completed of 2 ended → TSR 0.5 ; variant: 2 completed of 2 → TSR 1.0
+    await insertRows(ch, [
+      mkEvent('task_completed', 'task_c1', { verification: 'verified', duration_ms: 1, steps_total: 1 }),
+      mkEvent('task_failed', 'task_c2', { error: { type: 'x' }, retryable: false, duration_ms: 1 }),
+      mkEvent('task_completed', 'task_v1', { verification: 'verified', duration_ms: 1, steps_total: 1 }),
+      mkEvent('task_completed', 'task_v2', { verification: 'verified', duration_ms: 1, steps_total: 1 }),
+    ]);
+
+    const sql = perArmMetricSql('task_success_rate', {
+      tenantId: expTenant,
+      from: '2026-07-01 00:00:00.000',
+      to: '2026-07-08 00:00:00.000',
+    });
+    const result = await ch.query({
+      query: sql,
+      query_params: {
+        tenantId: expTenant,
+        from: '2026-07-01 00:00:00.000',
+        to: '2026-07-08 00:00:00.000',
+        subjects: ['task_c1', 'task_c2', 'task_v1', 'task_v2'],
+        arms: ['control', 'control', 'variant', 'variant'],
+      },
+      format: 'JSONEachRow',
+    });
+    const rows = (await result.json()) as { arm: string; value: number }[];
+    const byArm = Object.fromEntries(rows.map((r) => [r.arm, Number(r.value)]));
+    expect(byArm.control).toBeCloseTo(0.5, 5);
+    expect(byArm.variant).toBeCloseTo(1.0, 5);
   });
 });
