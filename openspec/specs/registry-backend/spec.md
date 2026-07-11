@@ -113,3 +113,17 @@ The service SHALL store, per tenant, experiment records (hypothesis, originating
 
 - **WHEN** tenant A's token requests tenant B's experiments or verdicts
 - **THEN** the API responds 404/403 and no tenant-B data is returned
+
+### Requirement: Operator credential and cross-tenant reads
+
+The service SHALL support an `operator` credential, distinct from the tenant scopes, that authorizes read-only cross-tenant methods (list tenants, read any tenant's recorded state, compute rollups). Operator credentials SHALL live outside the tenant-scoped token store, on an owner-only path that the non-owner tenant/RLS role cannot read. These methods run as the owner (bypassing per-tenant RLS by design) and are the only path that reads across tenants for operations; they SHALL be reachable only with an operator credential and SHALL append an audit record naming the operator.
+
+#### Scenario: Operator credential issued and enforced
+
+- **WHEN** an operator credential is issued and used on a cross-tenant read method
+- **THEN** the read succeeds; the same method with a tenant-scoped token is rejected
+
+#### Scenario: Cross-tenant read is audited
+
+- **WHEN** an operator reads across tenants
+- **THEN** an audit record naming the operator is appended
