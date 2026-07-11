@@ -36,6 +36,11 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
 - `apps/web` — the findings feed (filters, evidence drill-down, registry
   browser, audited autonomy dial, onboarding + benchmark views) on the
   design-system tokens.
+- `apps/operator` — the internal cross-tenant operator console (tenant
+  list, per-tenant drill-down, platform rollups, service health) behind an
+  audited `operator` token scope; the one deliberate cross-tenant read
+  path, proven closed to tenants by the isolation suite. Deploy is
+  operator-gated.
 - `apps/docs` — public docs anchored on the schema spec, with a CI
   cross-reference gate so docs cannot drift from the code.
 - `packages/billing` — usage meters (reconcile to source), tiers seeded

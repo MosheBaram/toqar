@@ -12,9 +12,9 @@ Everything an operator needs is already recorded (merge rate in `instrument_runs
 
 ## Decisions
 
-### D1: Reuse the token scope machinery — add `operator`
+### D1: A distinct operator credential in its own owner-only table
 
-Token scopes already exist (`events:write`, `api:full`) with issue/revoke/audit. This adds a third: `operator`. The auth preHandler for `/operator/*` requires it and 403s everything else. No new auth system — the isolation suite already proves scope containment; `operator` joins that matrix.
+Tenant scopes (`events:write`, `api:full`) live in `tenant_tokens`, which is FK'd to a tenant — an operator has no tenant, so it can't be a row there. **As built**, operator credentials live in their own `operator_tokens` table (with `operator_audit`), deliberately never GRANTed to the `toqar_app` role and never RLS-enabled. This is strictly *stronger* than a scope flag: the non-owner tenant/RLS path is physically refused (`permission denied`) when it touches the operator tables — proven by a test. The `/operator/*` preHandler admits an operator token, 403s any tenant token, and 401s an absent/invalid/revoked one; the isolation suite asserts that matrix.
 
 ### D2: Cross-tenant reads are owner-run store methods, mirroring `optedInTenants`
 
@@ -38,7 +38,7 @@ The isolation suite's contract is "new surfaces must register to ship." Operator
 - [Rollups drift from source] → reconcile-to-source tests (merge rate == records) as first-class scenarios, same as billing meters.
 - [Operator app widens the surface] → separate app keeps customer and operator auth from ever sharing a request path; it rides the existing CI gates.
 
-## Open Questions
+## Resolved during implementation
 
-- Operator token issuance/rotation mechanics (bootstrap the first operator token) — resolve at implementation; likely a seed/admin CLI command, itself audited.
-- Whether health aggregation polls services or reads a shared status table — decide with the deploy topology in hand (health endpoints already exist either way).
+- **Bootstrap:** `OperatorStore.createOperatorToken(operator)` mints the first token and audits it. Rotation reuses the same issue/revoke methods.
+- **Health aggregation:** the operator health endpoint probes the registry database directly (truthful up/down → ok/degraded). The collector's rejection counters are per-instance and in-memory, so they are *not* rolled up cross-tenant from the control plane (that would be fabrication); a collector health probe is wired where the collector is reachable in deployment. The rollups' "rejection reasons" therefore come from the persisted `finding_rejections` (the uncited-number regression log), named honestly.

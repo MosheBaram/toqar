@@ -283,4 +283,33 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = current_setting('app.tenant', true));
     `,
   },
+  {
+    // Operator plane (spec: operator-console; registry-backend delta). These
+    // tables are the ONLY cross-tenant surface. They are deliberately NOT a
+    // tenant scope: tenant tokens carry a tenant_id FK, an operator does not.
+    // They are owner-only — never GRANTed to toqar_app and never RLS-enabled —
+    // so the non-owner tenant/RLS path physically cannot read them. This is
+    // strictly stronger than a scope flag on tenant_tokens.
+    id: '012_operator',
+    sql: `
+      CREATE TABLE operator_tokens (
+        id text PRIMARY KEY,
+        operator text NOT NULL,
+        token_hash text NOT NULL UNIQUE,
+        prefix text NOT NULL,
+        issued_at timestamptz NOT NULL DEFAULT now(),
+        revoked_at timestamptz
+      );
+
+      CREATE TABLE operator_audit (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        operator text NOT NULL,
+        action text NOT NULL,
+        detail jsonb NOT NULL DEFAULT '{}'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX operator_audit_idx ON operator_audit (id DESC);
+    `,
+  },
 ];

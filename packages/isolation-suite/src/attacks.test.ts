@@ -1,6 +1,6 @@
 import { SCHEMA_VERSION } from '@toqar/registry';
 import { BufferedSink, buildCollectorApp, type StreamSink } from '@toqar/collector';
-import { buildApp, migrate, MIGRATIONS, RegistryStore } from '@toqar/registry-service';
+import { buildApp, migrate, MIGRATIONS, OperatorStore, RegistryStore } from '@toqar/registry-service';
 import { createPgliteExecutor } from '@toqar/registry-service/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -19,11 +19,13 @@ class NullSink implements StreamSink {
 }
 const collectorApp = buildCollectorApp(db, new BufferedSink(new NullSink(), { capacity: 10 }));
 const store = new RegistryStore(db);
+const operators = new OperatorStore(db);
 
 let victim: { tenantId: string; token: string };
 let attacker: { tenantId: string; token: string };
 let attackerEventsToken: string;
 let revokedToken: string;
+let operatorToken: string;
 let victimFindingId: string;
 let victimExperimentId: string;
 
@@ -37,6 +39,8 @@ beforeAll(async () => {
   const doomed = await store.issueToken(attacker.tenantId, { scope: 'api:full' }, 'suite');
   revokedToken = doomed.token;
   await store.revokeToken(attacker.tenantId, doomed.token_id, 'suite');
+
+  operatorToken = (await operators.createOperatorToken('suite-operator')).token;
 
   await store.putSeamMap(
     victim.tenantId,
@@ -127,7 +131,22 @@ const SURFACES: Record<string, Surface> = {
   },
   'collector traces': { app: () => collectorApp, method: 'POST', url: () => '/v1/traces', payload: () => ({}) },
   'collector rejections': { app: () => collectorApp, method: 'GET', url: () => '/v1/rejections' },
+  // Operator plane — the cross-tenant surface. Tenant credentials must be
+  // refused here exactly like everywhere else; the positive case (an
+  // operator token is admitted) is asserted separately below.
+  'operator tenants': { app: () => registryApp, method: 'GET', url: () => '/operator/tenants' },
+  'operator drill-down': { app: () => registryApp, method: 'GET', url: () => `/operator/tenants/${victim.tenantId}` },
+  'operator rollups': { app: () => registryApp, method: 'GET', url: () => '/operator/rollups' },
+  'operator health': { app: () => registryApp, method: 'GET', url: () => '/operator/health' },
 };
+
+/** The operator routes, for the operator-scope containment test. */
+const OPERATOR_ROUTES = [
+  () => '/operator/tenants',
+  () => `/operator/tenants/${victim.tenantId}`,
+  () => '/operator/rollups',
+  () => '/operator/health',
+];
 
 const VICTIM_MARKERS = ['victim_secret_marker', 'victim/secret-repo', 'secret_task', 'src/secret.ts'];
 
@@ -180,6 +199,22 @@ describe('adversarial isolation suite', () => {
       if (surface.app() !== registryApp) continue;
       const res = await attack(surface, attackerEventsToken);
       expect(res.statusCode, `${name} with events:write`).toBe(403);
+    }
+  });
+
+  it('operator routes: tenant tokens refused (403), operator token admitted (200)', async () => {
+    for (const url of OPERATOR_ROUTES) {
+      // Both tenant scopes are refused — the cross-tenant door is closed to tenants.
+      for (const token of [attacker.token, attackerEventsToken]) {
+        const refused = await registryApp.inject({ method: 'GET', url: url(), headers: { authorization: `Bearer ${token}` } });
+        expect(refused.statusCode, `${url()} with tenant token`).toBe(403);
+        for (const marker of VICTIM_MARKERS) {
+          expect(refused.body, `${url()} leaked "${marker}"`).not.toContain(marker);
+        }
+      }
+      // Only the operator token reaches them.
+      const admitted = await registryApp.inject({ method: 'GET', url: url(), headers: { authorization: `Bearer ${operatorToken}` } });
+      expect(admitted.statusCode, `${url()} with operator token`).toBe(200);
     }
   });
 });
