@@ -1,10 +1,12 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { SqlExecutor } from './db/executor.js';
+import { OperatorStore } from './operator.js';
 import { ConflictError, RegistryStore, ValidationError } from './store.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
     tenantId: string;
+    operator: string;
   }
 }
 
@@ -19,8 +21,10 @@ const API_ACTOR = 'api';
 export function buildApp(db: SqlExecutor): FastifyInstance {
   const app = Fastify();
   const store = new RegistryStore(db);
+  const operator = new OperatorStore(db);
 
   app.decorateRequest('tenantId', '');
+  app.decorateRequest('operator', '');
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof ValidationError) {
@@ -54,6 +58,44 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
       return reply.code(403).send({ error: 'insufficient_scope', required: 'api:full' });
     }
     req.tenantId = resolved.tenantId;
+  });
+
+  // Operator plane (spec: operator-console). The one cross-tenant surface,
+  // gated by an operator token. A tenant token — any scope — is refused
+  // with 403; an absent/invalid/revoked credential is 401. Operator tokens
+  // live in their own table, so a tenant token can never resolve here.
+  app.addHook('preHandler', async (req, reply) => {
+    if (!req.url.startsWith('/operator/')) return;
+    const header = req.headers.authorization;
+    const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
+    const op = token ? await operator.resolveOperatorToken(token) : null;
+    if (op) {
+      req.operator = op.operator;
+      return;
+    }
+    const tenant = token ? await store.resolveToken(token) : null;
+    if (tenant) {
+      return reply.code(403).send({ error: 'insufficient_scope', required: 'operator' });
+    }
+    return reply.code(401).send({ error: 'unauthorized' });
+  });
+
+  app.get('/operator/tenants', async (req) => {
+    return operator.listTenants(req.operator);
+  });
+
+  app.get<{ Params: { id: string } }>('/operator/tenants/:id', async (req, reply) => {
+    const snapshot = await operator.tenantSnapshot(req.operator, req.params.id);
+    if (!snapshot) return reply.code(404).send({ error: 'not_found' });
+    return snapshot;
+  });
+
+  app.get('/operator/rollups', async (req) => {
+    return operator.rollups(req.operator);
+  });
+
+  app.get('/operator/health', async () => {
+    return operator.health();
   });
 
   app.get('/v1/registry/events', async (req) => {
