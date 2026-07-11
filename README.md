@@ -76,3 +76,10 @@ encryption-at-rest and backups are deployment-gated and not yet live.
     pnpm install
     pnpm test
     pnpm typecheck
+
+See `ARCHITECTURE.md` for how the packages and apps compose (the dependency
+graph, the control-plane/data-plane split, and the cross-cutting
+invariants), and `CONTRIBUTING.md` for the full clone-to-green setup,
+including the docker-compose integration suite and the anti-slop gate. The
+customer-facing docs site is `apps/docs` (see `packages/registry/README.md`
+for the schema spec it's anchored on).
