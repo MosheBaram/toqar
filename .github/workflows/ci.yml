@@ -23,3 +23,5 @@ jobs:
       - run: pnpm test
       - name: Anti-slop check
         run: ./scripts/anti-slop-check.sh
+      - name: Contributor-docs drift check
+        run: node scripts/check-contributor-docs.mjs
