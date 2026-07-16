@@ -11,13 +11,16 @@ Main specs in `openspec/specs/` are the contract for what exists today:
 `validation-ops`, `quality-gates`.
 
 ```
- TODAY ──▶ Phase 1 (6 changes) ──G2──▶ Phase 2 ──G3──▶ SHIPPED
-           platform core              closed loop + GA
-           + design D2                + design D3
+ TODAY ──▶ Phase 1 (6 changes) ──G2──▶ Phase 2 ──▶ Phase 3 ──G3──▶ SHIPPED
+           platform core              closed loop   hardening +
+           + design D2                + GA, D3      competitive depth
    ║
    ╚═ parallel: Phase 0.5 validation (design partners) — G1 signals
       steer positioning and priorities; they no longer gate the build
 ```
+
+*(Phases 1–2 are built and archived; Phase 3 is the active tranche —
+see the amendment log. G3's remaining items are operational, not code.)*
 
 ## Amendment log
 
@@ -39,6 +42,16 @@ Main specs in `openspec/specs/` are the contract for what exists today:
   deployment-shaped work (billing charges, benchmarking cohorts, the
   production deploy) stays operator-gated regardless — building the code
   does not provision infrastructure or take real money.
+
+- **2026-07-16 — founder directive: best-in-world bar; Phase 3
+  commissioned.** With Phase 0–2 feature-complete, the founder set the
+  bar at category-best and commissioned a full pass: a code-grounded
+  platform review (`docs/reviews/2026-07-16-platform-review.md`), deep
+  persistence research, 14-competitor market research, and agent-data
+  governance research (`docs/research/`). Outcome: Phase 3 below, planned
+  as three strict-validated OpenSpec changes. Notable review finding
+  pulled to the front of the queue: RLS is built but disengaged on the
+  served path — a trust fix, not a scale fix.
 
 ---
 
@@ -193,6 +206,40 @@ remaining items (paying customers, deploy-measured SLOs, the SOC 2 report)
 require the operator-gated production deploy and real customers — they
 cannot be closed by building. The platform is feature-complete against the
 roadmap; shipping it is now an operational act, not an engineering one.
+
+---
+
+## Phase 3 — Hardening & competitive depth (entry: founder directive, 2026-07-16 — see amendment log)
+
+Grounded in the platform review and the three research reports
+(`docs/reviews/2026-07-16-platform-review.md`, `docs/research/`). Three
+active OpenSpec changes, implemented **in this order** — trust fixes
+before scale, table-stakes before the moat's last mile:
+
+### Change 3.1 `data-plane-hardening` — persistence: efficient, reliable, performant
+
+- **Capabilities:** `analytics-storage` (new), `stream-pipeline` (delta), `tenancy` (delta)
+- Query-aligned sort key + typed hot columns (today: UUID-led key, `JSONExtract` on every read), codecs, monthly partitions, incremental MVs for the metrics, bounded-`FINAL` dedup, TTL/tiered storage/per-tenant deletion, replication/backup; idempotent `acks=all` producer, effectively-once sink + DLQ, no acknowledge-then-drop; **engage RLS on the served path** (the review's headline finding — pull this forward).
+- **DoD:** same metric numbers, cheaper and replicated; both isolation layers provably active; nothing acked is ever silently lost.
+
+### Change 3.2 `data-governance` — the trust floor for holding source code + traces
+
+- **Capabilities:** `data-governance` (new), `security-controls` (delta)
+- Redaction at ingest across all span types (secrets recognizer for code), per-tenant envelope encryption + crypto-shredding, GDPR erasure with an audit trail, residency routing, SOC 2 Confidentiality + Privacy scope. Regional clusters/CMEK/the report itself stay operator/audit-gated.
+- **DoD:** a tenant can be provably erased; nothing sensitive lands un-redacted without an explicit opt-in.
+
+### Change 3.3 `agentic-competitive-features` — close the debt, ship the last mile
+
+- **Capabilities:** `eval-framework`, `trace-explorer`, `failure-clustering`, `alerting`, `autonomous-rollout` (new); `otel-traces`, `sdk-node`, `semantic-layer`, `billing` (deltas)
+- Sequenced per the market research: evals → agent-native trace explorer (headless-first — open whitespace) → failure clustering → alerting + OTel GenAI import + framework wrappers → outcome-join metrics + per-task pricing → the guardrailed autonomy-level-3 closed loop (canary, blast-radius limits, auto-rollback, kill switch) — the capability no competitor ships.
+- **DoD:** TOQAR's own Q/A/R layers are credibly covered, and "it implements" is true within guardrails a tenant declared.
+
+**Steering context (from the market research):** the wedge is open and
+citable — nobody joins agent telemetry to business outcomes, nobody
+benchmarks cross-tenant, nobody closes the loop; but LangSmith Engine /
+Arize Signal / Datadog Patterns now match our analysis half, and
+Amplitude's Agent Analytics (beta) is racing our data model. Speed on 3.3
+matters; safety framing on autonomy level 3 is non-negotiable.
 
 ---
 
