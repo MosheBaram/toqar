@@ -23,8 +23,14 @@ Phase 0: the validation toolkit for an 8-week design-partner concierge test.
   202 semantics, rejection accounting) plus OTLP/HTTP trace intake mapped
   to TOQAR events; buffered publishing rides broker outages.
 - `packages/analysis-agent` — playbooks over the semantic layer, honest
-  sweeps, the question-log eval harness, Slack Block Kit delivery, and
-  the automated weekly digest — every published number cited.
+  sweeps, the question-log eval harness, Slack Block Kit delivery, the
+  automated weekly digest, deterministic failure clustering into cited
+  findings, and alert evaluation (threshold/anomaly/eval-regression) —
+  every published number cited.
+- `packages/evals` — trajectory-level eval framework: code scorers, the
+  LLM-judge seam (judge runs observable; scores carry evaluator identity
+  and the full version tuple, excluded from the citation contract),
+  versioned datasets, the CI gate, judge-vs-human calibration.
 - `packages/mcp-server` — read-only MCP surface for customers' own
   agents: metrics with citations, findings, registry, experiments.
 - `packages/experiments` — always-valid sequential testing (bounded

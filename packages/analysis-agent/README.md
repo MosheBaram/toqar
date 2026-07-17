@@ -35,3 +35,15 @@ the citation validator passes.
 ```bash
 pnpm --filter @toqar/analysis-agent test   # playbooks, answer assembly, Slack rendering
 ```
+
+## Alerts & clustering
+
+- `alerts.ts` (spec: alerting): threshold alerts fire with the metric's
+  actual cited value; anomaly alerts reflect the deterministic z-score
+  primitive; eval-regression messages carry the judged/directional caveat.
+  Config + the recorded lifecycle live in `@toqar/registry-service`
+  (`/v1/alerts*`); a no-data window records "no data", never "all clear".
+- `clusters.ts` (spec: failure-clustering): deterministic signature
+  clustering over recorded failures/overrides — member counts are the
+  enumerable members; significant clusters publish as findings through the
+  citation gate (`compileFailureRowsQuery` is the cited source).
