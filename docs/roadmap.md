@@ -19,8 +19,8 @@ Main specs in `openspec/specs/` are the contract for what exists today:
       steer positioning and priorities; they no longer gate the build
 ```
 
-*(Phases 1–2 are built and archived; Phase 3 is the active tranche —
-see the amendment log. G3's remaining items are operational, not code.)*
+*(Phases 1–3 are built and archived — see the amendment log. G3's
+remaining items are operational, not code.)*
 
 ## Amendment log
 
@@ -209,7 +209,7 @@ roadmap; shipping it is now an operational act, not an engineering one.
 
 ---
 
-## Phase 3 — Hardening & competitive depth (entry: founder directive, 2026-07-16 — see amendment log)
+## Phase 3 — Hardening & competitive depth (entry: founder directive 2026-07-16; **implemented and archived 2026-07-17**, PRs #70–#90)
 
 Grounded in the platform review and the three research reports
 (`docs/reviews/2026-07-16-platform-review.md`, `docs/research/`). Three
