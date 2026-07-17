@@ -63,6 +63,26 @@ export function compileRunQuery(args: { tenantId: string; taskId: string; runId:
   return { id, metric: 'run_events', layer: 'T', sql, params };
 }
 
+/**
+ * Cited source rows for failure clustering (spec: failure-clustering):
+ * step failures and human overrides in a window. The clusterer's member
+ * counts reproduce from this query — the q_ id on a cluster finding
+ * resolves here.
+ */
+export function compileFailureRowsQuery(args: { tenantId: string; from: string; to: string }): MetricQuery {
+  if (!args.tenantId) throw new Error('a tenant is required — unscoped queries are unrepresentable');
+  const sql =
+    'SELECT event, task_type, tool_name, status, task_id, run_id ' +
+    'FROM toqar.events FINAL WHERE tenant_id = {tenantId:String} ' +
+    'AND timestamp >= {from:DateTime64(3)} AND timestamp < {to:DateTime64(3)} ' +
+    "AND ((event = 'step_executed' AND status != 'ok' AND tool_name != '') OR event = 'human_overrode') " +
+    'ORDER BY timestamp SETTINGS do_not_merge_across_partitions_select_final = 1';
+  const ts = (iso: string) => iso.replace('T', ' ').replace(/Z$/, '');
+  const params = { tenantId: args.tenantId, from: ts(args.from), to: ts(args.to) };
+  const id = `q_${createHash('sha256').update(sql + JSON.stringify(params)).digest('hex').slice(0, 16)}`;
+  return { id, metric: 'failure_rows', layer: 'O', sql, params };
+}
+
 /** Pure reconstruction over the query's rows — no fabricated fields. */
 export function reconstructRun(
   args: { taskId: string; runId: string },

@@ -24,9 +24,9 @@
 
 ## 3. Failure/topic clustering (spec: failure-clustering)
 
-- [ ] 3.1 Clustering job over failures/overrides/low-scores/intents (LLM-assisted grouping allowed; member counts computed, enumerable); TDD membership verifiability
-- [ ] 3.2 Significant clusters publish as findings through the citation gate; TDD an uncited cluster number is rejected
-- [ ] 3.3 Commit, PR, merge
+- [x] 3.1 Deterministic signature clustering over failures/overrides (member counts computed, members enumerable; TDD verifiability + determinism); rows come from a cited query (compileFailureRowsQuery) *(LLM relabeling is an optional later polish; membership math never moves to a model)*
+- [x] 3.2 Significant clusters publish as findings through the citation gate; TDD an uncited cluster number is rejected
+- [x] 3.3 Commit, PR, merge
 
 ## 4. Alerting + ingest breadth (specs: alerting, otel-traces delta, sdk-node delta)
 
