@@ -19,14 +19,14 @@ export async function ensureSchema(ch: ClickHouseClient): Promise<void> {
 
 export async function insertRows(ch: ClickHouseClient, rows: EventRow[]): Promise<void> {
   if (rows.length === 0) return;
-  // Deterministic batch token: on Replicated tables this makes producer/
-  // sink retries of the same batch free (block-level insert dedup); on
-  // plain MergeTree it is inert. Row-level convergence via
-  // ReplacingMergeTree stays the robust layer either way.
-  const token = createHash('sha256')
-    .update(rows.map((r) => r.event_id).join(','))
-    .digest('hex')
-    .slice(0, 32);
+  // Deterministic batch token: a retried identical batch carries the same
+  // token and is skipped at insert (non_replicated_deduplication_window /
+  // replicated window). The token hashes the FULL batch content — event_id
+  // alone is not enough, because OTLP-derived event_ids are deterministic
+  // per trace and tenant-independent, so two tenants exporting the same
+  // trace would collide on an id-only token (caught by the integration
+  // suite). Row-level ReplacingMergeTree stays the robust layer beneath.
+  const token = createHash('sha256').update(JSON.stringify(rows)).digest('hex').slice(0, 32);
   await ch.insert({
     table: 'toqar.events',
     values: rows,
@@ -34,6 +34,11 @@ export async function insertRows(ch: ClickHouseClient, rows: EventRow[]): Promis
     clickhouse_settings: {
       date_time_input_format: 'best_effort',
       insert_deduplication_token: token,
+      // A retried identical batch is skipped on the events table AND on
+      // dependent MV targets (daily_rollups) — insert-level idempotency
+      // beneath the ReplacingMergeTree row convergence.
+      insert_deduplicate: 1,
+      deduplicate_blocks_in_dependent_materialized_views: 1,
     },
   });
 }

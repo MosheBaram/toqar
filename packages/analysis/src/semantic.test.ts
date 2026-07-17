@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileMetric, listMetrics, METRICS } from './semantic.js';
+import { compileDailyRollup, compileMetric, listMetrics, METRICS } from './semantic.js';
 
 const args = {
   tenantId: 't_1',
@@ -46,6 +46,9 @@ describe('compiled queries', () => {
       // Hot fields are typed columns (spec: analytics-storage) — the read
       // path never parses JSON.
       expect(q.sql, name).not.toContain('JSONExtract');
+      // Bounded FINAL: dedup identity includes the timestamp, so duplicates
+      // never span partitions — partition-local FINAL is exactly correct.
+      expect(q.sql, name).toContain('SETTINGS do_not_merge_across_partitions_select_final = 1');
     }
   });
 

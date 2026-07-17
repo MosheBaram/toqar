@@ -3,7 +3,7 @@ import { BufferedSink, buildCollectorApp } from '@toqar/collector';
 import { migrate, MIGRATIONS, RegistryStore } from '@toqar/registry-service';
 import { createPgliteExecutor } from '@toqar/registry-service/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { compileMetric } from '@toqar/analysis';
+import { compileDailyRollup, compileMetric } from '@toqar/analysis';
 import { perArmMetricSql } from '@toqar/experiments';
 import { usageMeterSql } from '@toqar/billing';
 import { createClickHouse, ensureSchema, insertRows } from './clickhouse.js';
@@ -230,6 +230,50 @@ suite('collector → Redpanda → ClickHouse', () => {
     });
     const recordRows = (await record.json()) as { metric: string }[];
     expect(recordRows[0]?.metric).toBe('task_success_rate');
+  });
+
+  it('daily rollups reconcile to raw-event metrics, and a retried batch does not double them', async () => {
+    // Fixture: 6 completed (cost 0.7 each), 3 failed, 1 abandoned → TSR 0.6, CPCT 0.7
+    const rollupTenant = `t_roll_${Date.now()}`;
+    const base = {
+      schema_version: SCHEMA_VERSION,
+      run_id: 'run_1',
+      task_type: 'reply_to_lead',
+      agent: { name: 'sdr-agent', version: '1.0.0' },
+      tenant_id: rollupTenant,
+    };
+    const mk = (event: string, taskId: string, extra: Record<string, unknown> = {}) =>
+      toRow({ ...base, event, event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:00.000Z', task_id: taskId, ...extra })!;
+    const rows = [
+      ...Array.from({ length: 6 }, (_, i) =>
+        mk('task_completed', `task_c${i}`, { verification: 'verified', duration_ms: 1, steps_total: 1, cost_usd: 0.7 }),
+      ),
+      ...Array.from({ length: 3 }, (_, i) =>
+        mk('task_failed', `task_f${i}`, { error: { type: 'x' }, retryable: false, duration_ms: 1 }),
+      ),
+      mk('task_abandoned', 'task_a0', { abandoned_by: 'human', duration_ms: 1 }),
+    ];
+    await insertRows(ch, rows);
+    // Retried identical batch: same insert_deduplication_token → skipped on
+    // the events table AND the MV target (spec: analytics-storage).
+    await insertRows(ch, rows);
+
+    const executor = createMetricExecutor(ch);
+    const window = { tenantId: rollupTenant, from: '2026-07-01T00:00:00.000Z', to: '2026-07-08T00:00:00.000Z' };
+
+    const rollup = compileDailyRollup(window);
+    const rollupRows = await executor.execute(rollup);
+    expect(rollupRows).toHaveLength(1);
+    expect(Number(rollupRows[0]?.completed_tasks)).toBe(6);
+    expect(Number(rollupRows[0]?.ended_tasks)).toBe(10);
+    expect(Number(rollupRows[0]?.task_success_rate)).toBeCloseTo(0.6, 5);
+    expect(Number(rollupRows[0]?.cost_per_completed_task)).toBeCloseTo(0.7, 5);
+
+    // Reconcile: the cache agrees with the raw-event metrics.
+    const tsr = await executor.execute(compileMetric('task_success_rate', window));
+    const cpct = await executor.execute(compileMetric('cost_per_completed_task', window));
+    expect(Number(rollupRows[0]?.task_success_rate)).toBeCloseTo(Number(tsr[0]?.value), 8);
+    expect(Number(rollupRows[0]?.cost_per_completed_task)).toBeCloseTo(Number(cpct[0]?.value), 8);
   });
 
   it('computes guardrail metrics per experiment arm from existing events (no new event types)', async () => {

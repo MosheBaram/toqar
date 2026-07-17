@@ -15,10 +15,10 @@
 
 ## 2. Dedup without per-query FINAL + incremental rollups (spec: analytics-storage)
 
-- [ ] 2.1 Bound `FINAL` cost (partition-local final / insert-level dedup / serve from deduped projection) — TDD redelivery still counts once
-- [ ] 2.2 Materialized views/projections for the common rollups (per-tenant/day merge rate, TSR, cost per completed task); reconcile-to-raw test
-- [ ] 2.3 Point the operator rollups + hot dashboard reads at the views where they reconcile
-- [ ] 2.4 Commit, PR, merge
+- [x] 2.1 Bound `FINAL` cost (partition-local final / insert-level dedup / serve from deduped projection) — TDD redelivery still counts once
+- [x] 2.2 Materialized views/projections for the common rollups (per-tenant/day merge rate, TSR, cost per completed task); reconcile-to-raw test
+- [x] 2.3 Point the operator rollups + hot dashboard reads at the views where they reconcile
+- [x] 2.4 Commit, PR, merge
 
 ## 3. Retention, tiered storage, per-tenant deletion (spec: analytics-storage)
 
