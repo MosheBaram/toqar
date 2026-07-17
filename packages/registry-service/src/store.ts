@@ -72,7 +72,10 @@ const deliverySchema = z.object({
 const tokenScopeSchema = z.object({ scope: z.enum(['events:write', 'api:full']) });
 
 const autonomyGrantSchema = z.object({
-  level: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+  // Level 3 = guardrailed autonomous rollout (spec: autonomous-rollout):
+  // canary + sequential verdict + auto-promote/rollback within declared
+  // blast-radius limits. Explicit, audited, revocable like every rung.
+  level: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   granted_by: z.string().min(1),
 });
 
@@ -924,6 +927,34 @@ export class RegistryStore {
       await this.audit(tx, tenantId, actor, 'retention', `${parsed.data.retention_days}d`, {
         retention_days: before.rows[0]?.retention_days ?? null,
       }, parsed.data);
+    });
+  }
+
+  /** Tenant-declared blast-radius limits for autonomy level 3 (spec: autonomous-rollout). */
+  async getRolloutPolicy(tenantId: string): Promise<Record<string, unknown> | null> {
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query('SELECT policy FROM rollout_policies WHERE tenant_id = $1', [tenantId]);
+      return rows.length ? (rows[0]!.policy as Record<string, unknown>) : null;
+    });
+  }
+
+  async setRolloutPolicy(tenantId: string, value: unknown, actor: string): Promise<void> {
+    const parsed = z
+      .object({
+        change_classes: z.array(z.string().min(1)),
+        max_traffic_share: z.number().min(0).max(1),
+        protected_task_types: z.array(z.string()),
+        max_concurrent: z.number().int().min(1).max(100),
+      })
+      .safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    await this.scoped(tenantId, async (tx) => {
+      await tx.query(
+        `INSERT INTO rollout_policies (tenant_id, policy) VALUES ($1, $2)
+         ON CONFLICT (tenant_id) DO UPDATE SET policy = $2, updated_at = now()`,
+        [tenantId, JSON.stringify(parsed.data)],
+      );
+      await this.audit(tx, tenantId, actor, 'autonomy', 'rollout_policy', null, parsed.data);
     });
   }
 

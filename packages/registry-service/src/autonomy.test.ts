@@ -54,3 +54,35 @@ describe('autonomy dial backend', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe('autonomy level 3 + rollout policy (spec: autonomous-rollout)', () => {
+  it('level 3 is grantable, audited, and revocable like every rung', async () => {
+    const db = await createPgliteExecutor();
+    await migrate(db, MIGRATIONS);
+    const store = new RegistryStore(db);
+    const { tenantId } = await store.createTenant('L3 Tenant');
+    await store.grantAutonomy(tenantId, { level: 3, granted_by: 'founder' }, 'test');
+    expect((await store.getAutonomy(tenantId)).level).toBe(3);
+    // Revocation = granting a lower level; the dial is append-only history.
+    await store.grantAutonomy(tenantId, { level: 1, granted_by: 'founder' }, 'test');
+    expect((await store.getAutonomy(tenantId)).level).toBe(1);
+    await expect(store.grantAutonomy(tenantId, { level: 4, granted_by: 'x' }, 'test')).rejects.toThrow();
+    await db.close();
+  });
+
+  it('the blast-radius policy round-trips, validated and audited', async () => {
+    const db = await createPgliteExecutor();
+    await migrate(db, MIGRATIONS);
+    const store = new RegistryStore(db);
+    const { tenantId } = await store.createTenant('Policy Tenant');
+    expect(await store.getRolloutPolicy(tenantId)).toBeNull();
+    const policy = { change_classes: ['flag_rollout'], max_traffic_share: 0.1, protected_task_types: ['payments'], max_concurrent: 2 };
+    await store.setRolloutPolicy(tenantId, policy, 'founder');
+    expect(await store.getRolloutPolicy(tenantId)).toEqual(policy);
+    await expect(store.setRolloutPolicy(tenantId, { ...policy, max_traffic_share: 2 }, 'x')).rejects.toThrow();
+    const audit = await store.listAudit(tenantId);
+    expect(audit.some((a) => a.event === 'rollout_policy')).toBe(true);
+    await db.close();
+  });
+});
+
