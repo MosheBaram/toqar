@@ -9,7 +9,7 @@ import { usageMeterSql } from '@toqar/billing';
 import { createClickHouse, ensureSchema, insertRows } from './clickhouse.js';
 import { deleteTenantEvents } from './ch-migrate.js';
 import { createMetricExecutor } from './metric-executor.js';
-import { createRedpandaSink, startEventsConsumer, type ConsumerHandle } from './redpanda.js';
+import { createRedpandaSink, ensureTopics, startEventsConsumer, EVENTS_DLQ_TOPIC, type ConsumerHandle } from './redpanda.js';
 import { toRow } from './transform.js';
 
 /**
@@ -64,6 +64,7 @@ suite('collector → Redpanda → ClickHouse', () => {
     tenantId = t.tenantId;
 
     await ensureSchema(ch);
+    await ensureTopics(BROKERS);
     redpandaSink = createRedpandaSink(BROKERS);
     app = buildCollectorApp(db, new BufferedSink(redpandaSink, { capacity: 1000 }));
     consumer = await startEventsConsumer({ brokers: BROKERS, clickhouse: ch, groupId: `it_${Date.now()}` });
@@ -275,6 +276,42 @@ suite('collector → Redpanda → ClickHouse', () => {
     const cpct = await executor.execute(compileMetric('cost_per_completed_task', window));
     expect(Number(rollupRows[0]?.task_success_rate)).toBeCloseTo(Number(tsr[0]?.value), 8);
     expect(Number(rollupRows[0]?.cost_per_completed_task)).toBeCloseTo(Number(cpct[0]?.value), 8);
+  });
+
+  it('an unmappable message is preserved on the dead-letter topic, and the pipe continues', async () => {
+    const before = ((): number => consumer.deadLettered())();
+    // Garbage straight onto the events topic (bypassing collector validation).
+    await redpandaSink.publish([{ event_id: 'not-a-uuid', junk: true }]);
+    const good = { ...event(), tenant_id: tenantId };
+    await redpandaSink.publish([good]);
+
+    // The good event still lands (the poison message didn't block the partition)…
+    const target = await countRows();
+    const deadline = Date.now() + 10_000;
+    while (consumer.deadLettered() <= before || (await countRows()) < target) {
+      if (Date.now() > deadline) throw new Error('DLQ routing or pipe progress never happened');
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    expect(consumer.deadLettered()).toBeGreaterThan(before);
+    expect(consumer.unmapped()).toBeGreaterThan(0);
+
+    // …and the dead letter is recoverable from the DLQ topic with its reason.
+    const kafka = new (await import('kafkajs')).Kafka({ clientId: 'dlq-probe', brokers: BROKERS });
+    const probe = kafka.consumer({ groupId: `dlq_probe_${Date.now()}` });
+    await probe.connect();
+    await probe.subscribe({ topic: EVENTS_DLQ_TOPIC, fromBeginning: true });
+    const letters: { reason: string; original: string }[] = [];
+    await probe.run({
+      eachMessage: async ({ message }) => {
+        if (message.value) letters.push(JSON.parse(message.value.toString()));
+      },
+    });
+    const probeDeadline = Date.now() + 10_000;
+    while (!letters.some((l) => l.reason === 'unmappable' && l.original.includes('not-a-uuid'))) {
+      if (Date.now() > probeDeadline) throw new Error('dead letter never appeared on the DLQ topic');
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    await probe.disconnect();
   });
 
   it('a deleted tenant vanishes from events and rollups (right-to-be-forgotten)', async () => {

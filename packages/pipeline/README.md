@@ -66,3 +66,23 @@ not insert-time-unique.
   metadata-disk headroom — S3-backed parts still keep local metadata. On
   ClickHouse Cloud, tiering is built in (SharedMergeTree); only the DELETE
   TTL applies.
+
+## Stream durability (spec: stream-pipeline)
+
+- **Producer**: idempotent + `acks=-1` (all in-sync replicas; Redpanda acks
+  after fsync) — a retry after an ambiguous failure cannot duplicate on the
+  broker. Correctness no longer rests solely on ClickHouse dedup.
+- **Sink**: offsets commit only **after** the durable ClickHouse write — a
+  crash between write and commit re-processes (dedup absorbs the replay),
+  never skips.
+- **Dead letters**: unmappable/unparsable messages and batches that still
+  fail insertion after a retry go to `toqar.events.dlq` with their reason —
+  recoverable, never dropped. If the DLQ write fails, the batch is not
+  committed and re-processes.
+- **Backpressure**: the collector's buffer never acknowledges-then-drops —
+  past capacity it answers 503 (`ingest_backpressure`) and the SDK retries.
+- **Topics**: `ensureTopics()` provisions `cleanup.policy=delete` with
+  explicit retention (events 7d — sized to cover the ClickHouse restore
+  window, the practical PITR backstop; DLQ 30d). Tiered (object-storage)
+  retention is a Redpanda Enterprise deployment setting; apply it at deploy
+  time for long history.
