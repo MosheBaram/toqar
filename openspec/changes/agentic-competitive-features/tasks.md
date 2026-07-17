@@ -43,11 +43,11 @@
 
 ## 6. Guardrailed closed loop (spec: autonomous-rollout)
 
-- [ ] 6.1 Autonomy level 3 on the existing dial (explicit, audited, revocable); TDD level-2 never auto-promotes
-- [ ] 6.2 Tenant-declared change classes + blast-radius limits; out-of-class falls back to the human path (audited); TDD
-- [ ] 6.3 Canary → sequential monitoring with default guardrails → auto-promote on valid win / auto-rollback on breach; every transition audited with cited evidence; verdict to registry; TDD breach-rolls-back and win-promotes
-- [ ] 6.4 Kill switch: revoking level 3 halts in-flight rollouts safely; TDD
-- [ ] 6.5 Commit, PR, merge
+- [x] 6.1 Autonomy level 3 on the existing dial (explicit, audited, revocable); TDD level-2 never auto-promotes
+- [x] 6.2 Tenant-declared change classes + blast-radius limits; out-of-class falls back to the human path (audited); TDD
+- [x] 6.3 Canary → sequential monitoring with default guardrails → auto-promote on valid win / auto-rollback on breach; every transition audited with cited evidence; verdict to registry; TDD breach-rolls-back and win-promotes
+- [x] 6.4 Kill switch: revoking level 3 halts in-flight rollouts safely; TDD
+- [x] 6.5 Commit, PR, merge
 
 ## 7. Close-out
 

@@ -13,6 +13,7 @@ const AUTONOMY_LEVELS = [
   { id: 0, name: 'Read-only analysis', scope: 'analysis.read', description: 'The agent queries your event stream and posts findings. It cannot touch your repo.' },
   { id: 1, name: 'Instrumentation PRs', scope: 'repo.pr.instrumentation', description: 'The agent may open pull requests that add or fix tracking calls. You review and merge.' },
   { id: 2, name: 'Experiment PRs', scope: 'repo.pr.experiment', description: 'The agent may open pull requests that run guarded experiments. You review and merge.' },
+  { id: 3, name: 'Guardrailed rollout', scope: 'rollout.autonomous', description: 'Winning variants promote automatically within blast-radius limits you declare — canary first, instant rollback on any guardrail breach, revocable at any time.' },
 ];
 
 function FilterChip({ active, onClick, layer, children }: { active: boolean; onClick: () => void; layer?: string; children: string }) {

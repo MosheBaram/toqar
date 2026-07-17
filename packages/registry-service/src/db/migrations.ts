@@ -590,4 +590,25 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
     `,
   },
+  {
+    // Autonomy level 3 (spec: autonomous-rollout): widen the grant check
+    // and store the tenant-declared blast-radius policy autonomous
+    // rollouts are constrained by.
+    id: '021_autonomy_level3',
+    sql: `
+      ALTER TABLE autonomy_grants DROP CONSTRAINT autonomy_grants_level_check;
+      ALTER TABLE autonomy_grants ADD CONSTRAINT autonomy_grants_level_check CHECK (level IN (0, 1, 2, 3));
+
+      CREATE TABLE rollout_policies (
+        tenant_id text PRIMARY KEY REFERENCES tenants(id),
+        policy jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      GRANT SELECT, INSERT, UPDATE, DELETE ON rollout_policies TO toqar_app;
+      ALTER TABLE rollout_policies ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_rollout_policies ON rollout_policies
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+    `,
+  },
 ];
