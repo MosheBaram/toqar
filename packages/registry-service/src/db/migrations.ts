@@ -333,6 +333,26 @@ export const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    // Per-tenant envelope-encryption keys (spec: data-governance). The
+    // wrapped DEK lives beside the data; nulling it is crypto-shredding —
+    // that tenant's ciphertext becomes permanently unreadable, nobody else
+    // affected. Tenant-scoped RLS like every tenant table.
+    id: '016_tenant_keys',
+    sql: `
+      CREATE TABLE tenant_keys (
+        tenant_id text PRIMARY KEY REFERENCES tenants(id),
+        wrapped_dek text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        shredded_at timestamptz
+      );
+      GRANT SELECT, INSERT, UPDATE, DELETE ON tenant_keys TO toqar_app;
+      ALTER TABLE tenant_keys ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_tenant_keys ON tenant_keys
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+    `,
+  },
+  {
     // RLS engagement hardening (change: data-plane-hardening, group 5;
     // spec: tenancy delta).
     //

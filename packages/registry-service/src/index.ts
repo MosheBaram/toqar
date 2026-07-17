@@ -1,4 +1,5 @@
 export * from './app.js';
+export * from './crypto.js';
 export * from './db/executor.js';
 export * from './db/migrate.js';
 export * from './db/migrations.js';

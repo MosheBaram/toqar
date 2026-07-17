@@ -11,6 +11,7 @@ import {
 import type { ZodIssue } from 'zod';
 import type { SqlExecutor, SqlRunner } from './db/executor.js';
 import { defaultTaxonomy } from './taxonomy.js';
+import { decryptPayload, encryptPayload, generateDek, isEncrypted, kekFromEnv, unwrapDek, wrapDek } from './crypto.js';
 
 /** Payload failed schema validation — maps to HTTP 400. */
 export class ValidationError extends Error {
@@ -143,7 +144,50 @@ function parseEntry(value: unknown): RegistryEntry {
  * The operator plane (OperatorStore) is owner-run by design.
  */
 export class RegistryStore {
-  constructor(private readonly db: SqlExecutor) {}
+  private readonly kek: Buffer | null;
+
+  constructor(private readonly db: SqlExecutor, opts: { kek?: Buffer | null } = {}) {
+    this.kek = opts.kek !== undefined ? opts.kek : kekFromEnv();
+  }
+
+  /**
+   * The tenant's DEK, created on first use (spec: data-governance). Null
+   * when no KEK is configured (encryption off) or after a crypto-shred
+   * (data permanently unreadable).
+   */
+  private async tenantDek(tx: SqlRunner, tenantId: string): Promise<Buffer | null> {
+    if (!this.kek) return null;
+    const { rows } = await tx.query(
+      'SELECT wrapped_dek, shredded_at FROM tenant_keys WHERE tenant_id = $1',
+      [tenantId],
+    );
+    if (rows.length) {
+      if (!rows[0]!.wrapped_dek) return null; // crypto-shredded
+      return unwrapDek(this.kek, String(rows[0]!.wrapped_dek));
+    }
+    const dek = generateDek();
+    await tx.query('INSERT INTO tenant_keys (tenant_id, wrapped_dek) VALUES ($1, $2)', [
+      tenantId,
+      wrapDek(this.kek, dek),
+    ]);
+    return dek;
+  }
+
+  /**
+   * Crypto-shred (spec: data-governance): destroys the tenant's wrapped
+   * DEK — its encrypted payloads become permanently unreadable, other
+   * tenants untouched. Audited.
+   */
+  async cryptoShredTenant(tenantId: string, actor: string): Promise<void> {
+    await this.scoped(tenantId, async (tx) => {
+      await tx.query(
+        `INSERT INTO tenant_keys (tenant_id, wrapped_dek, shredded_at) VALUES ($1, NULL, now())
+         ON CONFLICT (tenant_id) DO UPDATE SET wrapped_dek = NULL, shredded_at = now()`,
+        [tenantId],
+      );
+      await this.audit(tx, tenantId, actor, 'retention', 'crypto_shred', null, { shredded: true });
+    });
+  }
 
   /** Every tenant-scoped operation goes through here — one transaction, RLS bound. */
   private scoped<T>(tenantId: string, fn: (tx: SqlRunner) => Promise<T>): Promise<T> {
@@ -342,12 +386,19 @@ export class RegistryStore {
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
     const map = parsed.data;
     await this.scoped(tenantId, async (tx) => {
+      // Seam maps are customer source context — the archetype payload for
+      // per-tenant envelope encryption (spec: data-governance). Encrypted
+      // when a KEK is configured; the ciphertext rides inside the jsonb.
+      const dek = await this.tenantDek(tx, tenantId);
+      const stored = dek
+        ? JSON.stringify({ __enc: encryptPayload(dek, JSON.stringify(map)) })
+        : JSON.stringify(map);
       await tx.query(
         `INSERT INTO repo_context (tenant_id, repo, seam_map, agent_version, produced_at)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (tenant_id, repo) DO UPDATE
            SET seam_map = $3, agent_version = $4, produced_at = $5, updated_at = now()`,
-        [tenantId, map.repo, JSON.stringify(map), map.agent_version, map.produced_at],
+        [tenantId, map.repo, stored, map.agent_version, map.produced_at],
       );
       await this.audit(tx, tenantId, actor, 'seam_map', map.repo, null, {
         agent_version: map.agent_version,
@@ -366,9 +417,18 @@ export class RegistryStore {
         [tenantId, repo],
       );
       if (!rows.length) return null;
-      const parsed = seamMapSchema.safeParse(rows[0]!.seam_map);
+      let value = rows[0]!.seam_map as Record<string, unknown>;
+      const enc = value && typeof value === 'object' ? (value as { __enc?: string }).__enc : undefined;
+      if (typeof enc === 'string' && isEncrypted(enc)) {
+        const dek = await this.tenantDek(tx, tenantId);
+        if (!dek) return null; // crypto-shredded (or KEK unavailable): unreadable by design
+        value = JSON.parse(decryptPayload(dek, enc)) as Record<string, unknown>;
+      }
+      const parsed = seamMapSchema.safeParse(value);
       if (!parsed.success) throw new ValidationError(parsed.error.issues);
       return parsed.data;
+      // Sensitive-context reads are audited by the caller-facing surface
+      // (see security-controls delta, group 5).
     });
   }
 

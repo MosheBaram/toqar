@@ -14,9 +14,9 @@
 
 ## 2. Envelope encryption + crypto-shredding (spec: data-governance)
 
-- [ ] 2.1 Per-tenant DEK (KMS-wrapped) management in the control plane; selective column/payload encryption for sensitive fields (never filterable fields); TDD encrypt/decrypt roundtrip
-- [ ] 2.2 Crypto-shred path: destroy a tenant DEK → its payloads unreadable, others unaffected; TDD
-- [ ] 2.3 Commit, PR, merge
+- [x] 2.1 Per-tenant DEK (KMS-wrapped) management in the control plane; selective column/payload encryption for sensitive fields (never filterable fields); TDD encrypt/decrypt roundtrip
+- [x] 2.2 Crypto-shred path: destroy a tenant DEK → its payloads unreadable, others unaffected; TDD
+- [x] 2.3 Commit, PR, merge
 
 ## 3. GDPR erasure + audit (spec: data-governance)
 
