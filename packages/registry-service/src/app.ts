@@ -1,3 +1,4 @@
+import { computeBenchmark, type Contribution } from '@toqar/analysis';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { SqlExecutor } from './db/executor.js';
 import { AlertsStore } from './alerts-store.js';
@@ -20,7 +21,20 @@ const API_ACTOR = 'api';
  * authenticated tenant — no tenant id ever appears in a URL, so a
  * cross-tenant request is unrepresentable rather than merely checked.
  */
-export function buildApp(db: SqlExecutor): FastifyInstance {
+/**
+ * Cohort values for a benchmark metric, computed per opted-in tenant by an
+ * owner-run job (production wires ClickHouse; tests wire a fixture). The
+ * route never fabricates a cohort — no source wired means an honest 503.
+ */
+export type BenchmarkSource = (metric: string, tenantIds: string[]) => Promise<Contribution[]>;
+
+/** The metrics benchmarked cross-tenant (the public docs claim exactly these). */
+const BENCHMARK_METRICS = new Set(['task_success_rate', 'cost_per_completed_task']);
+
+export function buildApp(
+  db: SqlExecutor,
+  appOpts: { benchmarkSource?: BenchmarkSource } = {},
+): FastifyInstance {
   const app = Fastify();
   const store = new RegistryStore(db);
   const operator = new OperatorStore(db);
@@ -327,6 +341,32 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
 
   app.get<{ Params: { id: string } }>('/v1/evals/agreement/:id', async (req) => {
     return evals.agreement(req.tenantId, req.params.id);
+  });
+
+  // Benchmark viewing (spec: benchmarking-optin; go-to-market §8.2 —
+  // founder decision #5): contribute on any tier, VIEW on Growth. Both
+  // gates answer honestly: which gate refused, never a silent 404.
+  app.get<{ Querystring: { metric?: string } }>('/v1/benchmark/result', async (req, reply) => {
+    const metric = req.query.metric ?? '';
+    if (!BENCHMARK_METRICS.has(metric)) {
+      return reply.code(400).send({ error: 'unknown_benchmark_metric', benchmarked: [...BENCHMARK_METRICS] });
+    }
+    const billing = await store.getBilling(req.tenantId);
+    if (billing.tier !== 'growth') {
+      return reply.code(403).send({ error: 'benchmark_requires_growth', tier: billing.tier });
+    }
+    const { opted_in } = await store.getBenchmarkOptin(req.tenantId);
+    if (!opted_in) {
+      return reply.code(403).send({ error: 'benchmark_requires_optin' });
+    }
+    if (!appOpts.benchmarkSource) {
+      return reply.code(503).send({ error: 'benchmark_source_unavailable' });
+    }
+    const cohort = await store.optedInTenants();
+    const contributions = await appOpts.benchmarkSource(metric, cohort);
+    const own = contributions.find((c) => c.tenantId === req.tenantId)?.value;
+    const result = computeBenchmark(contributions, own !== undefined ? { ownValue: own } : {});
+    return { metric, result };
   });
 
   app.get('/v1/benchmark/optin', async (req) => {

@@ -8,3 +8,10 @@ to agents like yours? Cohorts are k-anonymized: a cohort below the
 minimum tenant count publishes nothing, and published aggregates are
 blended (mean/stddev/count) so no individual tenant's value is
 recoverable. Opting out stops contribution immediately.
+
+Contribution is open to every tier; **viewing cohort comparisons is a
+Growth feature** (`GET /v1/benchmark/result`), and viewing also requires
+that you contribute — you see the cohort you're part of. Each gate answers
+by name (`benchmark_requires_growth`, `benchmark_requires_optin`), never a
+silent error.
+

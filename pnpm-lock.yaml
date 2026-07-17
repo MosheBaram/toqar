@@ -437,6 +437,9 @@ importers:
 
   packages/registry-service:
     dependencies:
+      '@toqar/analysis':
+        specifier: workspace:*
+        version: link:../analysis
       '@toqar/billing':
         specifier: workspace:*
         version: link:../billing

@@ -123,6 +123,7 @@ const SURFACES: Record<string, Surface> = {
   billing: { app: () => registryApp, method: 'GET', url: () => '/v1/billing' },
   'billing invoices': { app: () => registryApp, method: 'GET', url: () => '/v1/billing/invoices' },
   'benchmark optin': { app: () => registryApp, method: 'GET', url: () => '/v1/benchmark/optin' },
+  'benchmark result': { app: () => registryApp, method: 'GET', url: () => '/v1/benchmark/result?metric=task_success_rate' },
   'collector events': {
     app: () => collectorApp,
     method: 'POST',

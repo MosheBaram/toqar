@@ -25,7 +25,8 @@
     "postgres": "^3.4.4",
     "zod": "^3.23.8",
     "@toqar/billing": "workspace:*",
-    "@toqar/evals": "workspace:*"
+    "@toqar/evals": "workspace:*",
+    "@toqar/analysis": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.12",
