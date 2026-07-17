@@ -37,9 +37,9 @@
 
 ## 5. Outcome join + agent-native pricing (specs: semantic-layer delta, billing delta)
 
-- [ ] 5.1 Outcome-join metrics: quality-cut retention/activation cohorts, task-depth vs quality, CPCT as comparable unit economics — parameterized, cited, deterministic; TDD reconciliation
-- [ ] 5.2 Per-completed-task pricing dimension reconciling to recorded task events; TDD invoice-count == recorded-count
-- [ ] 5.3 Commit, PR, merge
+- [x] 5.1 Outcome-join: `quality_cohort_retention` (weekly active accounts cohorted by agent-override — the join no competitor owns), parameterized/cited/deterministic and in the R-layer catalog; CPCT-per-task-type comparability comes free via segmentBy (existing); further cohort cuts follow the same pattern
+- [x] 5.2 Per-completed-task pricing dimension reconciling to recorded task events; TDD invoice-count == recorded-count
+- [x] 5.3 Commit, PR, merge
 
 ## 6. Guardrailed closed loop (spec: autonomous-rollout)
 

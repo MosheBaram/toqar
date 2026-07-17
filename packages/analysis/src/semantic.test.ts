@@ -16,7 +16,7 @@ const README_HEADLINE_METRICS: Record<string, string[]> = {
   O: ['cost_per_completed_task', 'tokens_per_task', 'steps_per_task', 'latency_p95', 'loop_retry_ratio', 'per_tool_failure_rate'],
   Q: ['human_edit_distance', 'regression_delta', 'complaint_rate'],
   A: ['autonomy_rate', 'escalation_rate', 'override_rate', 'approval_friction'],
-  R: ['weekly_task_actors', 'task_depth_expansion', 'delegation_share', 'net_task_growth'],
+  R: ['weekly_task_actors', 'task_depth_expansion', 'delegation_share', 'net_task_growth', 'quality_cohort_retention'],
 };
 
 describe('catalog completeness', () => {

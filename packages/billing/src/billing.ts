@@ -6,7 +6,7 @@
  * scope stays with the provider.
  */
 
-export type UsageMetric = 'events_ingested' | 'tasks_tracked' | 'agent_runs';
+export type UsageMetric = 'events_ingested' | 'tasks_tracked' | 'agent_runs' | 'tasks_completed';
 
 export interface UsageWindow {
   tenantId: string;
@@ -19,6 +19,8 @@ const METER_AGG: Record<UsageMetric, string> = {
   tasks_tracked: 'uniqExact(task_id) AS value',
   // an agent run is a distinct (task_id, run_id) pair that executed steps
   agent_runs: "uniqExact((task_id, run_id)) AS value",
+  // the agent-native pricing unit: a COMPLETED task as recorded — never an estimate
+  tasks_completed: "uniqExactIf(task_id, event = 'task_completed') AS value",
 };
 
 /** Parameterized ClickHouse SQL metering usage from real events. */
@@ -37,7 +39,7 @@ WHERE tenant_id = {tenantId:String}
 export interface Tier {
   name: string;
   price_usd_month: number;
-  limits: Record<UsageMetric, number>;
+  limits: Record<TierMetric, number>;
 }
 
 /**
@@ -58,9 +60,12 @@ export const TIERS: Tier[] = [
   },
 ];
 
-export type Usage = Record<UsageMetric, number>;
+/** Tier limits apply to the volume meters; pricing units are separate. */
+export type TierMetric = 'events_ingested' | 'tasks_tracked' | 'agent_runs';
+export type Usage = Record<TierMetric, number>;
 
-const METRICS: UsageMetric[] = ['events_ingested', 'tasks_tracked', 'agent_runs'];
+// tasks_completed is a pricing unit, not a tier limit — deliberately absent here.
+const METRICS: TierMetric[] = ['events_ingested', 'tasks_tracked', 'agent_runs'];
 
 function covers(tier: Tier, usage: Usage): boolean {
   return METRICS.every((m) => usage[m] <= tier.limits[m]);
@@ -101,3 +106,45 @@ export interface StripeRefs {
   customer_id: string;
   subscription_id: string | null;
 }
+
+/* ---------------- agent-native pricing (spec: billing delta) ---------------- */
+
+/**
+ * Per-completed-task pricing: agentic workloads emit orders of magnitude
+ * more raw events per unit of work, so per-event pricing punishes exactly
+ * the customers Toqar serves. The priced unit is a completed task AS
+ * RECORDED (the tasks_completed meter, reconcilable by query) — never an
+ * estimate. Rate seeded from validation WTP the same way the tiers were.
+ */
+export interface TaskPricing {
+  usd_per_completed_task: number;
+  /** Tasks included before per-task billing starts (soft floor). */
+  included_tasks: number;
+}
+
+export const DEFAULT_TASK_PRICING: TaskPricing = {
+  usd_per_completed_task: 0.05,
+  included_tasks: 1000,
+};
+
+export interface TaskInvoice {
+  completed_tasks: number;
+  billable_tasks: number;
+  amount_usd: number;
+  /** The meter this count reconciles to — run it to reproduce the bill. */
+  meter: 'tasks_completed';
+}
+
+export function taskBasedInvoice(completedTasks: number, pricing: TaskPricing = DEFAULT_TASK_PRICING): TaskInvoice {
+  if (!Number.isInteger(completedTasks) || completedTasks < 0) {
+    throw new Error('completed task count must be a non-negative integer from the tasks_completed meter');
+  }
+  const billable = Math.max(0, completedTasks - pricing.included_tasks);
+  return {
+    completed_tasks: completedTasks,
+    billable_tasks: billable,
+    amount_usd: Number((billable * pricing.usd_per_completed_task).toFixed(2)),
+    meter: 'tasks_completed',
+  };
+}
+
