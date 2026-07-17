@@ -14,7 +14,14 @@ import { SCHEMA_VERSION } from '@toqar/registry';
  * - task_type: span attr ?? resource attr `toqar.task_type` ?? root span name
  * - agent name: resource `service.name`
  */
-export const OTEL_MAPPING_VERSION = '0.1.0';
+export const OTEL_MAPPING_VERSION = '0.2.0';
+/**
+ * The gen_ai client-span conventions this mapping targets (the stable
+ * layer: model, usage tokens, operation, provider). Attributes from newer
+ * semconvs are PRESERVED in the event payload without altering mapped
+ * semantics — churn upstream cannot silently change what events exist.
+ */
+export const PINNED_GENAI_SEMCONV = '1.37';
 
 interface OtlpAttr {
   key: string;
@@ -103,16 +110,28 @@ export function mapResourceSpans(payload: OtlpResourceSpans): OtelMapResult {
 
       const model = attrs.get('gen_ai.request.model') ?? attrs.get('gen_ai.response.model');
       const toolName = attrs.get('toqar.tool.name') ?? attrs.get('gen_ai.tool.name');
+      const operation = attrs.get('gen_ai.operation.name');
       const outcome = attrs.get('toqar.outcome');
 
-      if (model !== undefined || toolName !== undefined) {
+      // Unknown/unmapped gen_ai.* attributes ride along unchanged — the
+      // long tail survives semconv churn without moving mapped semantics.
+      const MAPPED = new Set([
+        'gen_ai.request.model', 'gen_ai.response.model', 'gen_ai.tool.name',
+        'gen_ai.usage.input_tokens', 'gen_ai.usage.output_tokens', 'gen_ai.operation.name',
+      ]);
+      const passthrough: Record<string, string | number> = {};
+      for (const [key, value] of attrs) {
+        if (key.startsWith('gen_ai.') && !MAPPED.has(key)) passthrough[key] = value;
+      }
+
+      if (model !== undefined || toolName !== undefined || operation === 'execute_tool' || operation === 'chat') {
         events.push({
           ...envelope,
           event: 'step_executed',
           event_id: deterministicId(span.traceId, span.spanId, 'step_executed'),
           step_id: span.spanId,
           step_index: 0,
-          step_type: model !== undefined ? 'llm_call' : 'tool_call',
+          step_type: model !== undefined || operation === 'chat' ? 'llm_call' : 'tool_call',
           ...(model !== undefined ? { model: String(model) } : {}),
           ...(toolName !== undefined ? { tool_name: String(toolName) } : {}),
           ...(attrs.has('gen_ai.usage.input_tokens')
@@ -123,6 +142,7 @@ export function mapResourceSpans(payload: OtlpResourceSpans): OtelMapResult {
             : {}),
           latency_ms: latencyMs(span),
           status,
+          ...(Object.keys(passthrough).length ? { otel_attributes: passthrough } : {}),
         });
         continue;
       }

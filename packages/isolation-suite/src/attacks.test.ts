@@ -131,6 +131,14 @@ const SURFACES: Record<string, Surface> = {
   },
   'collector traces': { app: () => collectorApp, method: 'POST', url: () => '/v1/traces', payload: () => ({}) },
   'collector rejections': { app: () => collectorApp, method: 'GET', url: () => '/v1/rejections' },
+  'alerts list': { app: () => registryApp, method: 'GET', url: () => '/v1/alerts' },
+  'alerts create': {
+    app: () => registryApp,
+    method: 'POST',
+    url: () => '/v1/alerts',
+    payload: () => ({ name: 'x', kind: 'threshold', config: {}, route: { channel: 'webhook', url: 'https://example.com/h' } }),
+  },
+  'alert events': { app: () => registryApp, method: 'GET', url: () => '/v1/alerts/events' },
   'eval scores list': { app: () => registryApp, method: 'GET', url: () => '/v1/evals/scores' },
   'eval scores write': {
     app: () => registryApp,

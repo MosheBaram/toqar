@@ -551,4 +551,43 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
     `,
   },
+  {
+    // Alerting (spec: alerting): per-tenant alert configs and the recorded
+    // lifecycle of every evaluation and delivery — fired or not, delivered
+    // or failed, never silent.
+    id: '020_alerts',
+    sql: `
+      CREATE TABLE alerts (
+        id text PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        name text NOT NULL,
+        kind text NOT NULL CHECK (kind IN ('threshold', 'anomaly', 'eval_regression')),
+        config jsonb NOT NULL,
+        route jsonb NOT NULL,
+        enabled boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE alert_events (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        alert_id text NOT NULL REFERENCES alerts(id),
+        fired boolean NOT NULL,
+        value double precision,
+        query_id text,
+        delivery_status text CHECK (delivery_status IN ('delivered', 'failed', 'skipped')),
+        delivery_detail text,
+        evaluated_at timestamptz NOT NULL DEFAULT now()
+      );
+      GRANT SELECT, INSERT, UPDATE, DELETE ON alerts, alert_events TO toqar_app;
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO toqar_app;
+      ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_alerts ON alerts
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+      ALTER TABLE alert_events ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_alert_events ON alert_events
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+    `,
+  },
 ];
