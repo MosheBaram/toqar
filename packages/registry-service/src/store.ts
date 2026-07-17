@@ -31,7 +31,7 @@ export class ConflictError extends Error {
 export interface AuditRecord {
   id: number;
   actor: string;
-  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy' | 'token' | 'experiment' | 'benchmark';
+  operation: 'seed' | 'put' | 'add' | 'modify' | 'remove' | 'seam_map' | 'instrument_run' | 'finding' | 'autonomy' | 'token' | 'experiment' | 'benchmark' | 'retention';
   /** Registry event name, or the repo for seam-map operations. */
   event: string;
   diff: { before: unknown; after: unknown };
@@ -735,6 +735,29 @@ export class RegistryStore {
       await this.audit(tx, tenantId, actor, 'benchmark', parsed.data.opted_in ? 'opt_in' : 'opt_out', null, {
         opted_in: parsed.data.opted_in,
       });
+    });
+  }
+
+  /** Analytics retention window (spec: analytics-storage). Default 365. */
+  async getRetentionDays(tenantId: string): Promise<number> {
+    const { rows } = await this.db.query('SELECT retention_days FROM tenants WHERE id = $1', [
+      tenantId,
+    ]);
+    return rows.length ? Number(rows[0]!.retention_days) : 365;
+  }
+
+  async setRetentionDays(tenantId: string, value: unknown, actor: string): Promise<void> {
+    const parsed = z.object({ retention_days: z.number().int().min(1).max(3650) }).safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    await this.db.transaction(async (tx) => {
+      const before = await tx.query('SELECT retention_days FROM tenants WHERE id = $1', [tenantId]);
+      await tx.query('UPDATE tenants SET retention_days = $2 WHERE id = $1', [
+        tenantId,
+        parsed.data.retention_days,
+      ]);
+      await this.audit(tx, tenantId, actor, 'retention', `${parsed.data.retention_days}d`, {
+        retention_days: before.rows[0]?.retention_days ?? null,
+      }, parsed.data);
     });
   }
 

@@ -12,6 +12,7 @@ import type { BufferedSink } from './sink.js';
 declare module 'fastify' {
   interface FastifyRequest {
     collectorTenantId: string;
+    collectorRetentionDays: number;
   }
 }
 
@@ -52,6 +53,7 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
   const rejections = new RejectionCounters();
 
   app.decorateRequest('collectorTenantId', '');
+  app.decorateRequest('collectorRetentionDays', 365);
 
   app.get('/health', async () => {
     const health = sink.health();
@@ -65,6 +67,10 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
     const tenantId = bearer ? await store.findTenantByToken(bearer) : null;
     if (!tenantId) return reply.code(401).send({ error: 'unauthorized' });
     req.collectorTenantId = tenantId;
+    // Per-tenant analytics retention rides every enriched event into
+    // ClickHouse, where the events TTL is timestamp + retention_days
+    // (spec: analytics-storage).
+    req.collectorRetentionDays = await store.getRetentionDays(tenantId);
   });
 
   app.post<{ Body: { events?: unknown[] } }>('/v1/events', async (req, reply) => {
@@ -80,7 +86,11 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
       const schema = CORE_EVENTS.has(name) ? toqarEventSchema : productEventSchema;
       const parsed = schema.safeParse(value);
       if (parsed.success) {
-        accepted.push({ ...(parsed.data as Record<string, unknown>), tenant_id: req.collectorTenantId });
+        accepted.push({
+          ...(parsed.data as Record<string, unknown>),
+          tenant_id: req.collectorTenantId,
+          retention_days: req.collectorRetentionDays,
+        });
         return;
       }
       const reasons = parsed.error.issues.map((i) => `${i.path.join('.') || 'event'}: ${i.message}`);
@@ -106,7 +116,11 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
     for (let i = 0; i < unmapped.length; i++) {
       rejections.record(req.collectorTenantId, 'unmapped_span');
     }
-    const enriched = events.map((e) => ({ ...e, tenant_id: req.collectorTenantId }));
+    const enriched = events.map((e) => ({
+      ...e,
+      tenant_id: req.collectorTenantId,
+      retention_days: req.collectorRetentionDays,
+    }));
     await sink.publish(enriched);
     return reply.code(202).send({ accepted: enriched.length, unmapped: unmapped.length });
   });

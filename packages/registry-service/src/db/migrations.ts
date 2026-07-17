@@ -312,4 +312,15 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX operator_audit_idx ON operator_audit (id DESC);
     `,
   },
+  {
+    // Per-tenant analytics retention (spec: analytics-storage). The value
+    // rides every enriched event into ClickHouse, where the events TTL is
+    // timestamp + retention_days — no native per-tenant TTL exists, so the
+    // window is a per-row column derived from this setting.
+    id: '013_retention',
+    sql: `
+      ALTER TABLE tenants ADD COLUMN retention_days int NOT NULL DEFAULT 365
+        CHECK (retention_days BETWEEN 1 AND 3650);
+    `,
+  },
 ];

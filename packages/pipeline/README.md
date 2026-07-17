@@ -42,3 +42,27 @@ first paying non-partner tenant reopens the managed-vs-VM decision.
 Until the semantic layer (change 1.4) encodes it: always read with
 `FINAL` (or aggregate over `event_id`) — the table is eventually-deduped,
 not insert-time-unique.
+
+## Data lifecycle & tiered storage (spec: analytics-storage)
+
+- **Per-tenant retention**: every event row carries `retention_days`
+  (resolved from the tenant's control-plane setting at collection time,
+  default 365, bounds 1–3650); the events TTL is
+  `timestamp + toIntervalDay(retention_days)` with `ttl_only_drop_parts`.
+  Change it per tenant via `RegistryStore.setRetentionDays` (audited).
+- **Citation log**: `toqar.executed_queries` keeps 400 days — past the
+  maximum default event retention, so citations resolve for as long as the
+  data they cite exists.
+- **Right-to-be-forgotten**: `deleteTenantEvents(ch, tenantId)` removes a
+  tenant's rows from `toqar.events` and `toqar.daily_rollups` (lightweight
+  deletes — immediately invisible to queries, physically removed at merge).
+  Verified by the integration suite.
+- **Tiered storage (deployment, operator-gated)**: hot NVMe → object
+  storage is a ClickHouse *storage policy* (disks/volumes config), not DDL.
+  At deploy time: define an S3 disk + `hot`/`cold` volumes, then
+  `ALTER TABLE toqar.events MODIFY TTL toDateTime(timestamp) + toIntervalDay(30) TO VOLUME 'cold', toDateTime(timestamp) + toIntervalDay(retention_days) DELETE`.
+  Two hard rules from the persistence research: **never set an S3 bucket
+  lifecycle policy** (ClickHouse owns object lifecycle), and watch local
+  metadata-disk headroom — S3-backed parts still keep local metadata. On
+  ClickHouse Cloud, tiering is built in (SharedMergeTree); only the DELETE
+  TTL applies.
