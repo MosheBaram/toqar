@@ -29,13 +29,13 @@
 
 ## 4. Stream durability (spec: stream-pipeline delta)
 
-- [ ] 4.1 Idempotent producer + `acks=all` on the collector's Redpanda sink; TDD retry-does-not-duplicate
-- [ ] 4.2 Sink commits offsets only after a durable ClickHouse write; TDD crash-before-commit re-processes not skips (effectively-once via dedup)
-- [ ] 4.3 Dead-letter path for unmappable/failed messages with reason; observable count; no silent drop
-- [ ] 4.4 Fix acknowledge-then-drop: `BufferedSink` overflow spills durably (disk/DLQ replay) or applies backpressure instead of counting drops; TDD outage-past-capacity loses nothing acked
-- [ ] 4.5 Batch/async the `executed_queries` citation writes (no single-row insert per metric read — write-on-read amplification + parts hazard)
-- [ ] 4.6 Explicit topic retention + tiered-storage config (documented for deployment)
-- [ ] 4.7 Commit, PR, merge
+- [x] 4.1 Idempotent producer + `acks=all` on the collector's Redpanda sink; TDD retry-does-not-duplicate
+- [x] 4.2 Sink commits offsets only after a durable ClickHouse write; TDD crash-before-commit re-processes not skips (effectively-once via dedup)
+- [x] 4.3 Dead-letter path for unmappable/failed messages with reason; observable count; no silent drop
+- [x] 4.4 Fix acknowledge-then-drop: `BufferedSink` overflow spills durably (disk/DLQ replay) or applies backpressure instead of counting drops; TDD outage-past-capacity loses nothing acked
+- [x] 4.5 Batch/async the `executed_queries` citation writes (no single-row insert per metric read — write-on-read amplification + parts hazard)
+- [x] 4.6 Explicit topic retention + tiered-storage config (documented for deployment)
+- [x] 4.7 Commit, PR, merge
 
 ## 5. RLS engagement + replication/HA + control-plane reliability (specs: tenancy delta, analytics-storage)
 

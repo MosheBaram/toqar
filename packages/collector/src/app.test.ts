@@ -135,3 +135,51 @@ describe('broker blip', () => {
     expect(delivered.length).toBe(7); // 5 earlier + the buffered one + the recovery one
   });
 });
+
+describe('backpressure (spec: stream-pipeline — no acknowledge-then-drop)', () => {
+  class FlakySink implements StreamSink {
+    up = true;
+    published: Record<string, unknown>[][] = [];
+    async publish(messages: Record<string, unknown>[]): Promise<void> {
+      if (!this.up) throw new Error('broker down');
+      this.published.push(messages);
+    }
+  }
+
+  it('refuses with 503 once the buffer is full, and every 202 survives the outage', async () => {
+    const db = await createPgliteExecutor();
+    await migrate(db, MIGRATIONS);
+    const store = new RegistryStore(db);
+    const { token } = await store.createTenant('Backpressure Tenant');
+    const flaky = new FlakySink();
+    const smallSink = new BufferedSink(flaky, { capacity: 2 });
+    const bpApp = buildCollectorApp(db, smallSink);
+    const post = () =>
+      bpApp.inject({
+        method: 'POST',
+        url: '/v1/events',
+        headers: { authorization: `Bearer ${token}` },
+        payload: { events: [{ ...event(), event_id: crypto.randomUUID() }] },
+      });
+
+    flaky.up = false;
+    // Two fit the buffer and are acknowledged.
+    expect((await post()).statusCode).toBe(202);
+    expect((await post()).statusCode).toBe(202);
+    // The third overflows: refused BEFORE acknowledgement — not dropped.
+    const refused = await post();
+    expect(refused.statusCode).toBe(503);
+    expect(refused.json().error).toBe('ingest_backpressure');
+
+    // Recovery: everything that was 202-acked is delivered, nothing lost.
+    flaky.up = true;
+    expect((await post()).statusCode).toBe(202);
+    const delivered = flaky.published.flat();
+    expect(delivered.length).toBe(3); // 2 buffered acked + the recovery one
+    expect(smallSink.health()).toEqual({ broker: 'up', buffered: 0 });
+
+    await bpApp.close();
+    await db.close();
+  });
+});
+

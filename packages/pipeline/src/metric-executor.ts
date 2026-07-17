@@ -28,7 +28,15 @@ export function createMetricExecutor(ch: ClickHouseClient): QueryExecutor {
           },
         ],
         format: 'JSONEachRow',
-        clickhouse_settings: { date_time_input_format: 'best_effort' },
+        clickhouse_settings: {
+          date_time_input_format: 'best_effort',
+          // The citation log writes on every metric read — server-side
+          // async batching stops one-row-per-insert part churn while
+          // wait_for_async_insert keeps the write durable (spec:
+          // analytics-storage; a citation must survive its query).
+          async_insert: 1,
+          wait_for_async_insert: 1,
+        },
       });
       return rows;
     },

@@ -7,7 +7,7 @@ import {
 import { RegistryStore, type SqlExecutor } from '@toqar/registry-service';
 import { z } from 'zod';
 import { mapResourceSpans, type OtlpResourceSpans } from './otel.js';
-import type { BufferedSink } from './sink.js';
+import { BackpressureError, type BufferedSink } from './sink.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -101,8 +101,17 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
       rejected.push({ index, reasons });
     });
 
-    // BufferedSink swallows broker failures into its buffer — intake never blocks.
-    await sink.publish(accepted);
+    // BufferedSink rides short outages; when its buffer is full it throws
+    // BEFORE anything here is acknowledged — 503, client retries, nothing
+    // acked is ever dropped (spec: stream-pipeline).
+    try {
+      await sink.publish(accepted);
+    } catch (err) {
+      if (err instanceof BackpressureError) {
+        return reply.code(503).send({ error: 'ingest_backpressure' });
+      }
+      throw err;
+    }
 
     return reply.code(202).send({ accepted: accepted.length, rejected });
   });
@@ -121,7 +130,14 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
       tenant_id: req.collectorTenantId,
       retention_days: req.collectorRetentionDays,
     }));
-    await sink.publish(enriched);
+    try {
+      await sink.publish(enriched);
+    } catch (err) {
+      if (err instanceof BackpressureError) {
+        return reply.code(503).send({ error: 'ingest_backpressure' });
+      }
+      throw err;
+    }
     return reply.code(202).send({ accepted: enriched.length, unmapped: unmapped.length });
   });
 
