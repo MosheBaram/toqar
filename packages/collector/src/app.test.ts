@@ -183,3 +183,58 @@ describe('backpressure (spec: stream-pipeline — no acknowledge-then-drop)', ()
   });
 });
 
+describe('redaction at ingest (spec: data-governance)', () => {
+  it('redacts by default; un-redacted retention is an explicit audited opt-in', async () => {
+    const db = await createPgliteExecutor();
+    await migrate(db, MIGRATIONS);
+    const store = new RegistryStore(db);
+    const { token, tenantId } = await store.createTenant('Governed Tenant');
+    class Capture implements StreamSink {
+      published: Record<string, unknown>[][] = [];
+      async publish(messages: Record<string, unknown>[]): Promise<void> {
+        this.published.push(messages);
+      }
+    }
+    const capture = new Capture();
+    const gApp = buildCollectorApp(db, new BufferedSink(capture, { capacity: 100 }));
+    const post = () =>
+      gApp.inject({
+        method: 'POST',
+        url: '/v1/events',
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          events: [
+            {
+              ...event(),
+              event: 'task_failed',
+              event_id: crypto.randomUUID(),
+              error: { type: 'tool_error', message: 'denied for jane@corp.com' },
+              retryable: false,
+              duration_ms: 5,
+            },
+          ],
+        },
+      });
+
+    // Default: redacted before the sink, and the response says so.
+    const redacted = await post();
+    expect(redacted.statusCode).toBe(202);
+    expect(redacted.json().redacted).toBeGreaterThan(0);
+    const first = capture.published.flat().at(-1)!;
+    expect(JSON.stringify(first)).not.toContain('jane@corp.com');
+    expect(JSON.stringify(first)).toContain('[REDACTED:email]');
+
+    // Explicit, audited opt-in to un-redacted retention.
+    await store.setRedactionOptout(tenantId, { redaction_optout: true }, 'founder');
+    const raw = await post();
+    expect(raw.statusCode).toBe(202);
+    const second = capture.published.flat().at(-1)!;
+    expect(JSON.stringify(second)).toContain('jane@corp.com');
+    const audit = await store.listAudit(tenantId);
+    expect(audit.some((a) => a.event === 'redaction_optout')).toBe(true);
+
+    await gApp.close();
+    await db.close();
+  });
+});
+

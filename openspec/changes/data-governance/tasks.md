@@ -7,10 +7,10 @@
 
 ## 1. Redaction at ingest (spec: data-governance)
 
-- [ ] 1.1 Redaction stage in the collector/ingest path (before ClickHouse): regex + NER over every span type; a distinct source-code secrets/credentials recognizer; TDD email/key/secret cases redacted
-- [ ] 1.2 Per-tenant un-redacted-retention opt-in (explicit, audited); default is redact
-- [ ] 1.3 Honest documentation: redaction is best-effort (no recall guarantee) — surfaced in docs and any customer-facing copy
-- [ ] 1.4 Commit, PR, merge
+- [x] 1.1 Redaction stage in the collector/ingest path (before ClickHouse): deterministic pattern recognizers over every span type (PII: email/phone/Luhn-verified card/SSN/IP) + a distinct source-code secrets class (cloud keys, API tokens, PEM blocks, bearer headers); TDD email/key/secret cases redacted *(NER/LLM secondary pass deferred — recorded as best-effort per the spec honesty contract)*
+- [x] 1.2 Per-tenant un-redacted-retention opt-in (explicit, audited); default is redact
+- [x] 1.3 Honest documentation: redaction is best-effort (no recall guarantee) — surfaced in docs and any customer-facing copy
+- [x] 1.4 Commit, PR, merge
 
 ## 2. Envelope encryption + crypto-shredding (spec: data-governance)
 

@@ -47,3 +47,19 @@ The collector's own tests are unit-level (validation, mapping, per-item
 under `packages/collector/**` also trigger the docker-compose integration
 job (`.github/workflows/integration.yml`), where the end-to-end broker →
 ClickHouse pipe is exercised by `@toqar/pipeline`'s integration test.
+
+## Redaction at ingest (spec: data-governance)
+
+Sensitive values are redacted **before** anything reaches the stream —
+across every span type (event property strings, tool errors, OTLP-mapped
+spans). Two recognizer classes: personal PII (email, phone, credit card
+with Luhn verification, SSN, IP) and **source-code secrets** (cloud keys,
+API tokens, private-key blocks, bearer headers) — a distinct class because
+Toqar reads customers' repos. Structural analytics fields (event names,
+ids, enums) are never touched.
+
+**Honesty contract:** redaction is deterministic pattern matching —
+best-effort with **no recall guarantee**; never present it as absolute.
+Retaining un-redacted content requires an explicit per-tenant opt-in
+(`RegistryStore.setRedactionOptout`, audited). The 202 response reports the
+redaction count.
