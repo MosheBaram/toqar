@@ -225,7 +225,7 @@ discussion. Miss the gate → rerun the kill-criteria decision rules
 | # | Decision | Recommendation | Unblocks |
 |---|----------|----------------|----------|
 | 1 | Production deploy (operator-gated since G3) | Do first — everything else assumes a live service | Self-serve, launch, partners |
-| 2 | Free Developer tier | Yes (§8.1) — billing-code change | Show HN, self-serve motion |
+| 2 | Free Developer tier | **Implemented 2026-07-17** (50k events / 10k tasks / 500 runs; new tenants default to free) | Show HN, self-serve motion |
 | 3 | Open-source spec + SDK + MCP server | Yes (§9) — licensing + repo split | Registries, npm channel, framing war |
 | 4 | Design-partner recruiting (5 paid slots) | Start now with §6 terms | Revenue, case studies, benchmarks |
 | 5 | Benchmark gating (view on paid) | Yes (§8.2) — small product change | Growth-tier pull |

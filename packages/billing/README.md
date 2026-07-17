@@ -27,3 +27,9 @@ there is no surprise overage.
 Stripe holds all card data. Toqar stores only `customer_id` and
 `subscription_id` — there is no field for card data, and a source scan
 enforces it. PCI scope stays with the provider.
+
+## Tiers
+
+A free Developer tier (50k events / 10k tasks / 500 runs per month) is the
+PLG entry point (go-to-market §8.1); `starter` ($200) and `growth` ($800)
+are seeded from the validation WTP threshold. New tenants default to free.

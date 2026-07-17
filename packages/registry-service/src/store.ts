@@ -80,7 +80,7 @@ const autonomyGrantSchema = z.object({
 });
 
 const billingAccountSchema = z.object({
-  tier: z.enum(['starter', 'growth']),
+  tier: z.enum(['free', 'starter', 'growth']),
   customer_id: z.string().min(1).nullish(),
   subscription_id: z.string().min(1).nullish(),
 });
@@ -796,7 +796,9 @@ export class RegistryStore {
       );
       const a = (rows[0] ?? {}) as Record<string, string | null>;
       return {
-        tier: a.tier ?? 'starter',
+        // PLG default (docs/business/go-to-market.md §8.1): every tenant
+        // starts free; paid tiers are an explicit upgrade.
+        tier: a.tier ?? 'free',
         customer_id: a.customer_id ?? null,
         subscription_id: a.subscription_id ?? null,
       };
