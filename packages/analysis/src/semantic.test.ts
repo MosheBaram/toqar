@@ -43,6 +43,9 @@ describe('compiled queries', () => {
       expect(q.params.tenantId).toBe('t_1');
       expect(q.metric).toBe(name);
       expect(q.id).toMatch(/^q_[0-9a-f]{16}$/);
+      // Hot fields are typed columns (spec: analytics-storage) — the read
+      // path never parses JSON.
+      expect(q.sql, name).not.toContain('JSONExtract');
     }
   });
 
@@ -81,7 +84,8 @@ describe('compiled queries', () => {
 
   it('cost_per_completed_task divides all cost by completions', () => {
     const q = compileMetric('cost_per_completed_task', args);
-    expect(q.sql).toContain("JSONExtractFloat(payload, 'cost_usd')");
+    expect(q.sql).toContain('sum(cost_usd)'); // typed hot column (spec: analytics-storage) — no JSONExtract on reads
+    expect(q.sql).not.toContain('JSONExtract');
     expect(q.sql).toContain("countIf(event = 'task_completed')");
   });
 
