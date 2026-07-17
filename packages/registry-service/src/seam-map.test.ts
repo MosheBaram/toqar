@@ -63,11 +63,16 @@ describe('RegistryStore seam maps', () => {
     expect(await store.getSeamMap(tenantA, 'x/y')).toBeNull();
   });
 
-  it('appends seam-map writes to the audit trail', async () => {
+  it('appends seam-map writes AND reads to the audit trail (source context tier)', async () => {
     const records = await store.listAudit(tenantA);
     const seamOps = records.filter((r) => r.operation === 'seam_map');
-    expect(seamOps.length).toBe(2);
-    expect(seamOps[0]?.event).toBe('acme/sdr-agent');
+    // Two writes from the earlier tests, plus one audited READ — source
+    // context is the most restricted classification tier, so access is
+    // recorded, not just mutation (spec: security-controls).
+    const reads = seamOps.filter((r) => (r.diff.after as { action?: string })?.action === 'read');
+    expect(reads.length).toBeGreaterThanOrEqual(1);
+    expect(seamOps.length - reads.length).toBe(2);
+    expect(seamOps.some((r) => r.event === 'acme/sdr-agent')).toBe(true);
   });
 });
 

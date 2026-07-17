@@ -33,6 +33,6 @@
 
 ## 5. Compliance posture (spec: security-controls delta) + close-out
 
-- [ ] 5.1 Data-classification scheme (source code / PII-traces / metadata tiers) driving redaction/encryption; immutable sensitive-data access audit extending existing trails
-- [ ] 5.2 SOC 2 Confidentiality + Privacy control mapping in `docs/security/`; erasure + crypto-shred runbook
-- [ ] 5.3 `openspec validate --strict`; full gates green; commit, PR, merge
+- [x] 5.1 Data-classification scheme (source code / PII-traces / metadata tiers) driving redaction/encryption; immutable sensitive-data access audit extending existing trails
+- [x] 5.2 SOC 2 Confidentiality + Privacy control mapping in `docs/security/`; erasure + crypto-shred runbook
+- [x] 5.3 `openspec validate --strict`; full gates green; commit, PR, merge

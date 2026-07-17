@@ -426,9 +426,10 @@ export class RegistryStore {
       }
       const parsed = seamMapSchema.safeParse(value);
       if (!parsed.success) throw new ValidationError(parsed.error.issues);
+      // Source context is the most restricted classification tier — reads
+      // are audited, not just writes (spec: security-controls).
+      await this.audit(tx, tenantId, 'system', 'seam_map', repo, null, { action: 'read' });
       return parsed.data;
-      // Sensitive-context reads are audited by the caller-facing surface
-      // (see security-controls delta, group 5).
     });
   }
 

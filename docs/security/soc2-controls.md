@@ -54,3 +54,16 @@ Last reviewed: 2026-07-09 (tenancy-and-security close-out).
   encryption rows and the backup row to `implemented` with real evidence.
 - Decide SSO timing (currently `planned`; not blocking Type 1 scope).
 - Select an auditor (G2 decision; this checklist is auditor-neutral).
+
+## Confidentiality & Privacy (added 2026-07-17, data-governance close-out)
+
+| Control | Status | Evidence source |
+| --- | --- | --- |
+| Data classification scheme (C1.1) | implemented | `docs/security/data-classification.md` — three tiers driving redaction/encryption; source context most restricted |
+| Redaction of PII/secrets at ingest | implemented | `packages/collector/src/redact.ts` (default-on; audited per-tenant opt-out; count reported in 202); best-effort honestly stated |
+| Field-level encryption of source context (C1.2) | implemented | Per-tenant envelope encryption (`crypto.ts`, `tenant_keys`); seam maps ciphertext at rest (tested) |
+| Secure deletion (C1.2) | implemented | Right-to-be-forgotten: lightweight deletes + scheduled purge + crypto-shred; `erasure_audit` request→completion trail; `docs/security/erasure-runbook.md` |
+| Sensitive-data access audit | implemented | Seam-map (source context) reads audited in `audit_log`; operator cross-tenant reads audited in `operator_audit`; both append-only |
+| Per-tenant retention limits | implemented | `tenants.retention_days` → ClickHouse TTL per row (audited setter) |
+| Data residency routing | partial | `tenants.residency` + deterministic consumer routing implemented; regional clusters are deployment-gated |
+| KMS-wrapped keys | partial | Envelope wrap/unwrap seam implemented with env KEK; cloud-KMS wrap is the deployment binding |
