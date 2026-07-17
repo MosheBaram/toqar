@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { planFor, resolveTier, TIERS, usageMeterSql } from './billing.js';
+import { planFor, taskBasedInvoice, resolveTier, TIERS, usageMeterSql } from './billing.js';
 
 describe('usage meters reconcile to source', () => {
   it('each meter is a tenant-scoped, FINAL-reading query over toqar.events', () => {
@@ -63,3 +63,28 @@ describe('no card data in Toqar (spec: payments via provider)', () => {
     expect(src).toMatch(/customer_id|subscription_id/);
   });
 });
+
+describe('agent-native pricing (spec: billing delta)', () => {
+  it('prices completed tasks as recorded, reconcilable to the meter', () => {
+    const invoice = taskBasedInvoice(1500, { usd_per_completed_task: 0.05, included_tasks: 1000 });
+    expect(invoice).toEqual({
+      completed_tasks: 1500,
+      billable_tasks: 500,
+      amount_usd: 25,
+      meter: 'tasks_completed',
+    });
+    expect(taskBasedInvoice(800).billable_tasks).toBe(0); // under the floor
+  });
+
+  it('rejects a non-recorded count — the meter is the only source', () => {
+    expect(() => taskBasedInvoice(12.5)).toThrow(/meter/);
+    expect(() => taskBasedInvoice(-1)).toThrow(/meter/);
+  });
+
+  it('the tasks_completed meter counts completed tasks only', () => {
+    const sql = usageMeterSql('tasks_completed', { tenantId: 't', from: 'x', to: 'y' });
+    expect(sql).toContain("uniqExactIf(task_id, event = 'task_completed')");
+    expect(sql).toContain('{tenantId:String}');
+  });
+});
+

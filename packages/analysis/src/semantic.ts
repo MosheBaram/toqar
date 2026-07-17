@@ -172,6 +172,16 @@ export const METRICS: Record<string, MetricDef> = {
     where: "event = 'task_started'",
     select: `countIf(initiator IN ('agent', 'schedule')) / count() AS value`,
   },
+  quality_cohort_retention: {
+    layer: 'R',
+    where: "session_id != ''",
+    outer: (inner) =>
+      `SELECT week, if(overridden = 1, 'overridden', 'clean') AS cohort, count() AS value FROM (${inner} GROUP_BY_MARKER) GROUP BY week, cohort ORDER BY week, cohort`,
+    select:
+      "session_id, toStartOfWeek(timestamp) AS week, max(event = 'human_overrode') AS overridden GROUP_BY session_id, week",
+    note:
+      'The outcome join no competitor owns: weekly active accounts (session proxy — stated) cohorted by whether the agent was overridden. Quality → retention in one cited query.',
+  },
   net_task_growth: {
     layer: 'R',
     needsPivot: true,
