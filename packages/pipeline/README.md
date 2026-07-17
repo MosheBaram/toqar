@@ -86,3 +86,23 @@ not insert-time-unique.
   window, the practical PITR backstop; DLQ 30d). Tiered (object-storage)
   retention is a Redpanda Enterprise deployment setting; apply it at deploy
   time for long history.
+
+## Replication, HA & backups (deployment runbook — spec: analytics-storage)
+
+Production topology (operator-gated; the schema and migrations are
+engine-compatible):
+
+- **Replication**: `ReplicatedMergeTree` with 2 replicas + a dedicated
+  3-node **ClickHouse Keeper** quorum (Raft; tolerates one failure). At
+  deploy, the events/rollup tables are created with the Replicated engines
+  (same columns/keys as the migrations here); `insert_deduplication_token`
+  then gives block-level idempotency natively via the replicated window.
+- **Backups**: native `BACKUP TABLE toqar.events TO S3(...)` with
+  incrementals (`SETTINGS base_backup = ...`). ClickHouse has no continuous
+  WAL — there is no Postgres-style PITR. Practical PITR = frequent
+  incrementals + **replay from Redpanda's committed offsets**, which is why
+  the events topic retention (7d, `ensureTopics`) must cover the worst-case
+  restore window. Exercise a restore before taking real traffic.
+- **Cloud option**: ClickHouse Cloud (SharedMergeTree) replaces all of the
+  above with managed replication/backups; the DELETE TTLs and schema apply
+  unchanged.

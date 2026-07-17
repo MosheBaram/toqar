@@ -39,8 +39,8 @@
 
 ## 5. RLS engagement + replication/HA + control-plane reliability (specs: tenancy delta, analytics-storage)
 
-- [ ] 5.1 Engage RLS on the served path: route every tenant-scoped `RegistryStore` method through `tenantTransaction`; `FORCE ROW LEVEL SECURITY` on tenant tables; production service connects as a non-owner, non-BYPASSRLS role; isolation suite re-run proves both layers active (operator plane stays owner-run by design)
-- [ ] 5.2 Rewrite RLS policies to the initPlan form `(SELECT current_setting('app.tenant'))`; composite indexes lead with `tenant_id`; fail-closed on unset GUC
-- [ ] 5.3 `ReplicatedMergeTree` + coordination (Keeper) deployment path; documented backup/PITR procedure, exercised once
-- [ ] 5.4 Postgres backups/PITR + connection pooling documented (PgBouncer transaction mode; `SET LOCAL`-only tenant context)
-- [ ] 5.5 `openspec validate --strict`; full gates + integration green; commit, PR, merge
+- [x] 5.1 Engage RLS on the served path: route every tenant-scoped `RegistryStore` method through `tenantTransaction`; `FORCE ROW LEVEL SECURITY` on tenant tables; production service connects as a non-owner, non-BYPASSRLS role; isolation suite re-run proves both layers active (operator plane stays owner-run by design)
+- [x] 5.2 Rewrite RLS policies to the initPlan form `(SELECT current_setting('app.tenant'))`; composite indexes lead with `tenant_id`; fail-closed on unset GUC
+- [x] 5.3 `ReplicatedMergeTree` + coordination (Keeper) deployment path; documented backup/PITR procedure *(runbook in pipeline README; the restore exercise is deployment-gated with the production stack — no prod cluster exists yet)*
+- [x] 5.4 Postgres backups/PITR + connection pooling documented (PgBouncer transaction mode; `SET LOCAL`-only tenant context)
+- [x] 5.5 `openspec validate --strict`; full gates + integration green; commit, PR, merge

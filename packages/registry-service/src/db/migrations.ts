@@ -323,4 +323,109 @@ export const MIGRATIONS: Migration[] = [
         CHECK (retention_days BETWEEN 1 AND 3650);
     `,
   },
+  {
+    // RLS engagement hardening (change: data-plane-hardening, group 5;
+    // spec: tenancy delta).
+    //
+    // - Policies move to the initPlan form: (SELECT current_setting(...))
+    //   evaluates once per statement instead of once per row — the
+    //   benchmarked difference is ~10ms vs ~11s at scale. The missing_ok
+    //   form stays: unset context compares against NULL and matches
+    //   nothing (fail closed).
+    // - Sequence grants: 007 granted ALL SEQUENCES as of that migration;
+    //   billing_invoices (010) was created after it, so toqar_app lacked
+    //   usage on its identity sequence — surfaced the moment the served
+    //   path actually ran as toqar_app.
+    // - FORCE ROW LEVEL SECURITY is deliberately NOT applied: the service
+    //   connects as the owner and drops to toqar_app per tenant
+    //   transaction; the owner-run paths (token resolution by hash, tenant
+    //   creation, the benchmarking cohort, the operator plane) are
+    //   inherently cross-tenant and would be broken by FORCE. Engagement
+    //   comes from routing every tenant-scoped store method through
+    //   tenantTransaction — proven by the served-path RLS test.
+    id: '014_rls_initplan',
+    sql: `
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO toqar_app;
+
+      DROP POLICY tenant_isolation_tenants ON tenants;
+      CREATE POLICY tenant_isolation_tenants ON tenants
+        USING (id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_registry_entries ON registry_entries;
+      CREATE POLICY tenant_isolation_registry_entries ON registry_entries
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_audit_log ON audit_log;
+      CREATE POLICY tenant_isolation_audit_log ON audit_log
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_repo_context ON repo_context;
+      CREATE POLICY tenant_isolation_repo_context ON repo_context
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_instrument_runs ON instrument_runs;
+      CREATE POLICY tenant_isolation_instrument_runs ON instrument_runs
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_findings ON findings;
+      CREATE POLICY tenant_isolation_findings ON findings
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_finding_deliveries ON finding_deliveries;
+      CREATE POLICY tenant_isolation_finding_deliveries ON finding_deliveries
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_finding_rejections ON finding_rejections;
+      CREATE POLICY tenant_isolation_finding_rejections ON finding_rejections
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_autonomy_grants ON autonomy_grants;
+      CREATE POLICY tenant_isolation_autonomy_grants ON autonomy_grants
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_tenant_tokens ON tenant_tokens;
+      CREATE POLICY tenant_isolation_tenant_tokens ON tenant_tokens
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_experiments ON experiments;
+      CREATE POLICY tenant_isolation_experiments ON experiments
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_experiment_verdicts ON experiment_verdicts;
+      CREATE POLICY tenant_isolation_experiment_verdicts ON experiment_verdicts
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_onboarding_timeline ON onboarding_timeline;
+      CREATE POLICY tenant_isolation_onboarding_timeline ON onboarding_timeline
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_billing_accounts ON billing_accounts;
+      CREATE POLICY tenant_isolation_billing_accounts ON billing_accounts
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_billing_invoices ON billing_invoices;
+      CREATE POLICY tenant_isolation_billing_invoices ON billing_invoices
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+
+      DROP POLICY tenant_isolation_benchmark_optin ON benchmark_optin;
+      CREATE POLICY tenant_isolation_benchmark_optin ON benchmark_optin
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+    `,
+  },
 ];

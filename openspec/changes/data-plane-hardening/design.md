@@ -96,8 +96,15 @@ bypasses RLS entirely. The fix, in order:
 - Rewrite policies to the initPlan form — `(SELECT current_setting(...))`
   instead of bare `current_setting(...)` — a benchmarked **~11,000ms → ~10ms**
   at scale; keep composite indexes leading with `tenant_id`.
-- Add `ALTER TABLE … FORCE ROW LEVEL SECURITY` and connect the service as a
-  **non-owner, non-BYPASSRLS** role in production.
+- **FORCE ROW LEVEL SECURITY — resolved during implementation: not applied.**
+  The service connects as the owner and drops to `toqar_app` per tenant
+  transaction (`SET LOCAL ROLE`); the owner-run paths (token resolution by
+  hash, tenant creation, benchmarking cohort, operator plane) are inherently
+  cross-tenant and FORCE would break them — token resolution itself would
+  fail closed. Engagement is enforced by routing (every tenant-scoped store
+  method goes through `tenantTransaction`, proven by the served-path RLS
+  test) rather than by FORCE. In production, the connecting role must be
+  `GRANT toqar_app TO <service_login>`-able; migrations run as owner.
 - Pooling: only `SET LOCAL` / `set_config(…, true)` for tenant context (already
   the case), because a bare `SET` leaks across PgBouncer transaction-pooled
   connections. Fail closed on unset GUC:
