@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { compileMetric, listMetrics, type QueryExecutor } from '@toqar/analysis';
+import { compileMetric, compileRunQuery, listMetrics, reconstructRun, type QueryExecutor } from '@toqar/analysis';
 import { z } from 'zod';
 
 /**
@@ -56,6 +56,18 @@ export function createToqarMcpServer(opts: McpServerOptions): McpServer {
       });
       const rows = await opts.executor.execute(query);
       return asText({ metric, query_id: query.id, rows });
+    },
+  );
+
+  server.tool(
+    'get_run',
+    'Drill into one agent run: ordered steps with tool/model/token/cost context, error and retry highlighting, sub-agents, human events, and outcome — answers "why did this run fail?". Carries the query id (q_…) of the row query.',
+    { task_id: z.string(), run_id: z.string() },
+    async ({ task_id, run_id }) => {
+      const query = compileRunQuery({ tenantId: opts.tenantId, taskId: task_id, runId: run_id });
+      const rows = await opts.executor.execute(query);
+      const run = reconstructRun({ taskId: task_id, runId: run_id }, rows);
+      return asText({ query_id: query.id, run });
     },
   );
 
