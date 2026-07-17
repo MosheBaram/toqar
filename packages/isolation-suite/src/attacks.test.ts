@@ -131,6 +131,19 @@ const SURFACES: Record<string, Surface> = {
   },
   'collector traces': { app: () => collectorApp, method: 'POST', url: () => '/v1/traces', payload: () => ({}) },
   'collector rejections': { app: () => collectorApp, method: 'GET', url: () => '/v1/rejections' },
+  'eval scores list': { app: () => registryApp, method: 'GET', url: () => '/v1/evals/scores' },
+  'eval scores write': {
+    app: () => registryApp,
+    method: 'POST',
+    url: () => '/v1/evals/scores',
+    payload: () => ({
+      trace_ref: { task_id: 't', run_id: 'r' },
+      evaluator: { id: 'x', kind: 'code', rubric_hash: 'rb_x' },
+      versions: { prompt_version: 'p', model_version: 'm', agent_version: 'a' },
+      value: 1,
+    }),
+  },
+  'eval datasets': { app: () => registryApp, method: 'POST', url: () => '/v1/evals/datasets', payload: () => ({ name: 'x' }) },
   // Operator plane — the cross-tenant surface. Tenant credentials must be
   // refused here exactly like everywhere else; the positive case (an
   // operator token is admitted) is asserted separately below.
