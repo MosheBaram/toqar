@@ -1,5 +1,6 @@
 export * from './app.js';
 export * from './crypto.js';
+export * from './alerts-store.js';
 export * from './evals-store.js';
 export * from './db/executor.js';
 export * from './db/migrate.js';

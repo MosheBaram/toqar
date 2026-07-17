@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { SqlExecutor } from './db/executor.js';
+import { AlertsStore } from './alerts-store.js';
 import { EvalsStore } from './evals-store.js';
 import { OperatorStore } from './operator.js';
 import { ConflictError, RegistryStore, ValidationError } from './store.js';
@@ -24,6 +25,7 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
   const store = new RegistryStore(db);
   const operator = new OperatorStore(db);
   const evals = new EvalsStore(db);
+  const alerts = new AlertsStore(db);
 
   app.decorateRequest('tenantId', '');
   app.decorateRequest('operator', '');
@@ -276,6 +278,21 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
   app.post('/v1/billing/invoices', async (req) => {
     await store.recordInvoice(req.tenantId, req.body);
     return { ok: true };
+  });
+
+  // Alerting (spec: alerting): config + the recorded lifecycle. Evaluation
+  // itself runs in the analysis agent; every evaluation/delivery outcome
+  // lands here — visible, never swallowed.
+  app.post('/v1/alerts', async (req) => {
+    return alerts.createAlert(req.tenantId, req.body);
+  });
+
+  app.get('/v1/alerts', async (req) => {
+    return { alerts: await alerts.listAlerts(req.tenantId) };
+  });
+
+  app.get<{ Querystring: { alert_id?: string } }>('/v1/alerts/events', async (req) => {
+    return { events: await alerts.listAlertEvents(req.tenantId, req.query.alert_id) };
   });
 
   // Eval framework (spec: eval-framework). Scores are a distinct signal

@@ -30,10 +30,10 @@
 
 ## 4. Alerting + ingest breadth (specs: alerting, otel-traces delta, sdk-node delta)
 
-- [ ] 4.1 Alert config (thresholds + anomaly/changepoint primitives + eval-score regressions), per-alert Slack/webhook routing; evaluation/delivery lifecycle recorded, failures visible; TDD
-- [ ] 4.2 Stable `gen_ai.*` client-span import pinned to a semconv version; unknown attrs preserved, unmapped counted; TDD with OpenLLMetry-shaped fixtures
-- [ ] 4.3 SDK framework wrappers (Anthropic, OpenAI, Vercel AI SDK, LangChain/LangGraph) with the SDK's never-block guarantees; shared registry contract with agent-planned events; TDD
-- [ ] 4.4 Commit, PR, merge
+- [x] 4.1 Alert config (thresholds + anomaly/changepoint primitives + eval-score regressions), per-alert Slack/webhook routing; evaluation/delivery lifecycle recorded, failures visible; TDD
+- [x] 4.2 Stable `gen_ai.*` client-span import pinned to a semconv version; unknown attrs preserved, unmapped counted; TDD with OpenLLMetry-shaped fixtures
+- [x] 4.3 SDK framework wrappers (Anthropic, OpenAI, Vercel AI SDK, LangChain/LangGraph) with the SDK's never-block guarantees; shared registry contract with agent-planned events; TDD
+- [x] 4.4 Commit, PR, merge
 
 ## 5. Outcome join + agent-native pricing (specs: semantic-layer delta, billing delta)
 

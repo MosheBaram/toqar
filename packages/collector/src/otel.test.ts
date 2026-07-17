@@ -125,3 +125,50 @@ describe('mapResourceSpans', () => {
     expect(String(a)).toMatch(/^[0-9a-f-]{36}$/);
   });
 });
+
+describe('pinned gen_ai semconv (spec: otel-traces delta)', () => {
+  const span = (attributes: { key: string; value: Record<string, unknown> }[]) => ({
+    resourceSpans: [
+      {
+        resource: { attributes: [{ key: 'service.name', value: { stringValue: 'sdr-agent' } }] },
+        scopeSpans: [
+          {
+            spans: [
+              {
+                traceId: 'a'.repeat(32),
+                spanId: 'b'.repeat(16),
+                parentSpanId: 'c'.repeat(16),
+                name: 'llm.call',
+                startTimeUnixNano: '1752000000000000000',
+                endTimeUnixNano: '1752000002000000000',
+                attributes,
+                status: { code: 1 },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  it('maps gen_ai.operation.name chat spans as llm_call even without a model attr', () => {
+    const { events } = mapResourceSpans(span([{ key: 'gen_ai.operation.name', value: { stringValue: 'chat' } }]) as never);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ event: 'step_executed', step_type: 'llm_call' });
+  });
+
+  it('preserves unknown gen_ai.* attributes without altering mapped semantics', () => {
+    const { events } = mapResourceSpans(
+      span([
+        { key: 'gen_ai.request.model', value: { stringValue: 'claude-opus-4-8' } },
+        { key: 'gen_ai.request.temperature', value: { doubleValue: 0.2 } },
+        { key: 'gen_ai.provider.name', value: { stringValue: 'anthropic' } },
+      ]) as never,
+    );
+    expect(events[0]).toMatchObject({
+      model: 'claude-opus-4-8',
+      otel_attributes: { 'gen_ai.request.temperature': 0.2, 'gen_ai.provider.name': 'anthropic' },
+    });
+  });
+});
+

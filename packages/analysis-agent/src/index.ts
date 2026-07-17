@@ -1,3 +1,4 @@
+export * from './alerts.js';
 export * from './answer.js';
 export * from './clusters.js';
 export * from './fixture-executor.js';
