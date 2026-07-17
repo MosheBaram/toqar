@@ -121,7 +121,51 @@ export const CH_MIGRATIONS: ChMigration[] = [
       GROUP BY tenant_id, task_type, day`,
     ],
   },
+  {
+    // Data lifecycle (change: data-plane-hardening, group 3; spec:
+    // analytics-storage).
+    //
+    // - Per-tenant retention: no native per-tenant TTL exists, so the
+    //   window is a per-row column (populated from the tenant's setting at
+    //   collection time); TTL drops rows at timestamp + retention_days.
+    //   ttl_only_drop_parts drops whole parts instead of rewriting rows.
+    // - executed_queries (the citation log) gets its own retention, sized
+    //   past the maximum event retention so a citation never outlives the
+    //   data it cites the other way around.
+    // - Tiered storage (hot disk → object storage via TTL ... TO VOLUME)
+    //   is a server storage-policy, not DDL — documented in the pipeline
+    //   README and applied at deployment (operator-gated).
+    id: '003_retention_ttl',
+    statements: [
+      `ALTER TABLE toqar.events ADD COLUMN IF NOT EXISTS retention_days UInt16 DEFAULT 365`,
+      `ALTER TABLE toqar.events MODIFY TTL toDateTime(timestamp) + toIntervalDay(retention_days)`,
+      `ALTER TABLE toqar.events MODIFY SETTING ttl_only_drop_parts = 1`,
+      `ALTER TABLE toqar.executed_queries MODIFY TTL toDateTime(executed_at) + toIntervalDay(400)`,
+    ],
+  },
 ];
+
+/**
+ * Right-to-be-forgotten deletion (spec: analytics-storage): removes a
+ * tenant's rows from the events table and the rollup cache. Lightweight
+ * deletes make the rows immediately invisible to queries; physical removal
+ * happens at merge. Never a per-row mutation storm — one statement per
+ * table.
+ */
+export async function deleteTenantEvents(
+  ch: import('@clickhouse/client').ClickHouseClient,
+  tenantId: string,
+): Promise<void> {
+  if (!tenantId) throw new Error('tenantId required');
+  await ch.command({
+    query: 'DELETE FROM toqar.events WHERE tenant_id = {tenantId:String}',
+    query_params: { tenantId },
+  });
+  await ch.command({
+    query: 'DELETE FROM toqar.daily_rollups WHERE tenant_id = {tenantId:String}',
+    query_params: { tenantId },
+  });
+}
 
 /** Applies pending migrations in order; already-applied ids are skipped. */
 export async function chMigrate(

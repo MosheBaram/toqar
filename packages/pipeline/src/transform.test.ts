@@ -113,4 +113,12 @@ describe('toRow', () => {
     const weird = toRow(message({ tokens_in: 'lots', rating: 'five', tool_name: 7 }));
     expect(weird).toMatchObject({ tokens_in: 0, rating_value: 0, tool_name: '' });
   });
+
+  it('carries the per-tenant retention window, clamped, defaulting to 365', () => {
+    expect(toRow(message())?.retention_days).toBe(365);
+    expect(toRow(message({ retention_days: 30 }))?.retention_days).toBe(30);
+    expect(toRow(message({ retention_days: 0 }))?.retention_days).toBe(1);
+    expect(toRow(message({ retention_days: 99999 }))?.retention_days).toBe(3650);
+    expect(toRow(message({ retention_days: 'forever' }))?.retention_days).toBe(365);
+  });
 });

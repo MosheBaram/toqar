@@ -7,6 +7,7 @@ import { compileDailyRollup, compileMetric } from '@toqar/analysis';
 import { perArmMetricSql } from '@toqar/experiments';
 import { usageMeterSql } from '@toqar/billing';
 import { createClickHouse, ensureSchema, insertRows } from './clickhouse.js';
+import { deleteTenantEvents } from './ch-migrate.js';
 import { createMetricExecutor } from './metric-executor.js';
 import { createRedpandaSink, startEventsConsumer, type ConsumerHandle } from './redpanda.js';
 import { toRow } from './transform.js';
@@ -274,6 +275,44 @@ suite('collector → Redpanda → ClickHouse', () => {
     const cpct = await executor.execute(compileMetric('cost_per_completed_task', window));
     expect(Number(rollupRows[0]?.task_success_rate)).toBeCloseTo(Number(tsr[0]?.value), 8);
     expect(Number(rollupRows[0]?.cost_per_completed_task)).toBeCloseTo(Number(cpct[0]?.value), 8);
+  });
+
+  it('a deleted tenant vanishes from events and rollups (right-to-be-forgotten)', async () => {
+    const goneTenant = `t_gone_${Date.now()}`;
+    const base = {
+      schema_version: SCHEMA_VERSION,
+      run_id: 'run_1',
+      task_type: 'reply_to_lead',
+      agent: { name: 'sdr-agent', version: '1.0.0' },
+      tenant_id: goneTenant,
+      retention_days: 30,
+    };
+    const rows = Array.from({ length: 4 }, (_, i) =>
+      toRow({ ...base, event: 'task_completed', event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:00.000Z', task_id: `task_${i}`, verification: 'verified', duration_ms: 1, steps_total: 1, cost_usd: 0.1 })!,
+    );
+    await insertRows(ch, rows);
+
+    const count = async (table: string) => {
+      const r = await ch.query({
+        query: `SELECT count() AS c FROM ${table} WHERE tenant_id = {t:String}`,
+        query_params: { t: goneTenant },
+        format: 'JSONEachRow',
+      });
+      return Number((((await r.json()) as { c: string }[])[0])?.c ?? 0);
+    };
+    expect(await count('toqar.events')).toBe(4);
+    expect(await count('toqar.daily_rollups')).toBeGreaterThan(0);
+    // retention rode the row in
+    const ret = await ch.query({
+      query: `SELECT max(retention_days) AS r FROM toqar.events WHERE tenant_id = {t:String}`,
+      query_params: { t: goneTenant },
+      format: 'JSONEachRow',
+    });
+    expect(Number((((await ret.json()) as { r: string }[])[0])?.r)).toBe(30);
+
+    await deleteTenantEvents(ch, goneTenant);
+    expect(await count('toqar.events')).toBe(0);
+    expect(await count('toqar.daily_rollups')).toBe(0);
   });
 
   it('computes guardrail metrics per experiment arm from existing events (no new event types)', async () => {

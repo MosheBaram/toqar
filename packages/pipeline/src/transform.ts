@@ -30,6 +30,8 @@ export interface EventRow {
   rating_value: number;
   edit_magnitude_value: number;
   response_latency_ms: number;
+  /** Per-tenant retention window (spec: analytics-storage); drives the TTL. */
+  retention_days: number;
   /** Full event JSON — event-specific properties live here. */
   payload: string;
 }
@@ -50,6 +52,9 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const nested = (v: unknown, key: string): unknown =>
   v && typeof v === 'object' ? (v as Record<string, unknown>)[key] : undefined;
+/** Clamped to the same bounds the control plane enforces; default 365. */
+const retentionDays = (v: unknown): number =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.min(3650, Math.max(1, Math.round(v))) : 365;
 
 /**
  * Enriched collector message → flat row. Returns null for unmappable
@@ -83,6 +88,7 @@ export function toRow(message: Record<string, unknown>): EventRow | null {
     rating_value: num(nested(message.rating, 'value')),
     edit_magnitude_value: num(nested(message.edit_magnitude, 'value')),
     response_latency_ms: num(message.response_latency_ms),
+    retention_days: retentionDays(message.retention_days),
     payload: JSON.stringify(message),
   };
 }

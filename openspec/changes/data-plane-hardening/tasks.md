@@ -22,10 +22,10 @@
 
 ## 3. Retention, tiered storage, per-tenant deletion (spec: analytics-storage)
 
-- [ ] 3.1 TTL + tiered-storage policy (hot disk → object storage), configurable per-tenant retention window
-- [ ] 3.2 Per-tenant deletion path (right-to-be-forgotten): removes the tenant's rows from events + views; integration test asserts the tenant vanishes from every query/rollup
-- [ ] 3.3 `executed_queries` retention (citation log TTL) that preserves reproducibility within the retained window
-- [ ] 3.4 Commit, PR, merge
+- [x] 3.1 TTL + tiered-storage policy (hot disk → object storage), configurable per-tenant retention window
+- [x] 3.2 Per-tenant deletion path (right-to-be-forgotten): removes the tenant's rows from events + views; integration test asserts the tenant vanishes from every query/rollup
+- [x] 3.3 `executed_queries` retention (citation log TTL) that preserves reproducibility within the retained window
+- [x] 3.4 Commit, PR, merge
 
 ## 4. Stream durability (spec: stream-pipeline delta)
 
