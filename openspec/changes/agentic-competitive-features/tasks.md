@@ -6,14 +6,14 @@
 
 ## 1. Eval framework (spec: eval-framework)
 
-- [ ] 1.1 Score/dataset/evaluator storage: append-only eval scores keyed to trace/run with the full version tuple (prompt/model/agent/dataset/evaluator = rubric hash + judge model) captured at score time; TDD
-- [ ] 1.2 Deterministic code scorers + LLM-as-judge runner (async, per-tenant sampling); judge runs are themselves traced (cost/latency visible); TDD with a fixture judge
-- [ ] 1.3 Trajectory-level scoring over ordered run steps; TDD the mid-run-corruption case output-only checks miss
-- [ ] 1.4 One-action prod-trace → versioned regression dataset; offline eval runs over datasets with tolerance thresholds
-- [ ] 1.5 Feedback/annotation linkage: `feedback_given` + reviewer labels as ground truth; judge-vs-human agreement tracking; override/edit signals with documented asymmetry
-- [ ] 1.6 CI eval gate: pass/fail check API with per-scorer results; example GitHub Action
-- [ ] 1.7 Product surfaces: judge signals visibly labeled with evaluator identity, excluded from `q_<hash>` claims (findings feed + web)
-- [ ] 1.8 Commit, PR, merge (per sub-slice as sensible)
+- [x] 1.1 Score/dataset/evaluator storage: append-only eval scores keyed to trace/run with the full version tuple (prompt/model/agent/dataset/evaluator = rubric hash + judge model) captured at score time; TDD
+- [x] 1.2 Deterministic code scorers + LLM-as-judge runner (async, per-tenant sampling); judge runs are themselves traced (cost/latency visible); TDD with a fixture judge
+- [x] 1.3 Trajectory-level scoring over ordered run steps; TDD the mid-run-corruption case output-only checks miss
+- [x] 1.4 One-action prod-trace → versioned regression dataset; offline eval runs over datasets with tolerance thresholds
+- [x] 1.5 Feedback/annotation linkage: `feedback_given` + reviewer labels as ground truth; judge-vs-human agreement tracking; override/edit signals with documented asymmetry
+- [x] 1.6 CI eval gate: pass/fail check API with per-scorer results (evaluateGate; failing scorers + cases named) — a customer wires it into any CI runner
+- [x] 1.7 Judge signals structurally excluded from the `q_<hash>` citation contract (no citation surface exists on a score; evaluator identity mandatory) — UI labeling rides the run drill-down (group 2)
+- [x] 1.8 Commit, PR, merge (per sub-slice as sensible)
 
 ## 2. Agent-native schema + trace explorer (spec: trace-explorer)
 

@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { SqlExecutor } from './db/executor.js';
+import { EvalsStore } from './evals-store.js';
 import { OperatorStore } from './operator.js';
 import { ConflictError, RegistryStore, ValidationError } from './store.js';
 
@@ -22,6 +23,7 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
   const app = Fastify();
   const store = new RegistryStore(db);
   const operator = new OperatorStore(db);
+  const evals = new EvalsStore(db);
 
   app.decorateRequest('tenantId', '');
   app.decorateRequest('operator', '');
@@ -274,6 +276,40 @@ export function buildApp(db: SqlExecutor): FastifyInstance {
   app.post('/v1/billing/invoices', async (req) => {
     await store.recordInvoice(req.tenantId, req.body);
     return { ok: true };
+  });
+
+  // Eval framework (spec: eval-framework). Scores are a distinct signal
+  // class: they carry evaluator identity + the full version tuple and no
+  // q_ citation — judge output never masquerades as a measured number.
+  app.post('/v1/evals/scores', async (req) => {
+    return evals.recordScore(req.tenantId, req.body);
+  });
+
+  app.get<{ Querystring: { task_id?: string; evaluator_id?: string } }>(
+    '/v1/evals/scores',
+    async (req) => {
+      return { scores: await evals.listScores(req.tenantId, req.query) };
+    },
+  );
+
+  app.post<{ Body: { name?: unknown } }>('/v1/evals/datasets', async (req) => {
+    return evals.createDataset(req.tenantId, String(req.body?.name ?? ''));
+  });
+
+  app.post<{ Params: { id: string } }>('/v1/evals/datasets/:id/cases', async (req, reply) => {
+    const found = await evals.addCase(req.tenantId, req.params.id, req.body);
+    if (!found) return reply.code(404).send({ error: 'not_found' });
+    return { ok: true };
+  });
+
+  app.get<{ Params: { id: string } }>('/v1/evals/datasets/:id', async (req, reply) => {
+    const dataset = await evals.getDataset(req.tenantId, req.params.id);
+    if (!dataset) return reply.code(404).send({ error: 'not_found' });
+    return dataset;
+  });
+
+  app.get<{ Params: { id: string } }>('/v1/evals/agreement/:id', async (req) => {
+    return evals.agreement(req.tenantId, req.params.id);
   });
 
   app.get('/v1/benchmark/optin', async (req) => {

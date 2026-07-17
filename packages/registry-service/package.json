@@ -24,7 +24,8 @@
     "fastify": "^4.28.1",
     "postgres": "^3.4.4",
     "zod": "^3.23.8",
-    "@toqar/billing": "workspace:*"
+    "@toqar/billing": "workspace:*",
+    "@toqar/evals": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.12",

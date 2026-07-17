@@ -488,4 +488,67 @@ export const MIGRATIONS: Migration[] = [
         CHECK (residency IN ('us', 'eu'));
     `,
   },
+  {
+    // Eval framework storage (spec: eval-framework): append-only scores
+    // carrying the full version tuple + evaluator identity; versioned
+    // datasets of promoted production trajectories. Tenant-scoped RLS like
+    // every tenant table; initPlan-form policies.
+    id: '019_evals',
+    sql: `
+      CREATE TABLE eval_scores (
+        id text PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        task_id text NOT NULL,
+        run_id text NOT NULL,
+        evaluator_id text NOT NULL,
+        evaluator_kind text NOT NULL CHECK (evaluator_kind IN ('code', 'judge', 'human')),
+        rubric_hash text NOT NULL,
+        judge_model text,
+        prompt_version text NOT NULL,
+        model_version text NOT NULL,
+        agent_version text NOT NULL,
+        dataset_version text,
+        value double precision NOT NULL CHECK (value >= 0 AND value <= 1),
+        label text,
+        reasoning text,
+        judge_latency_ms double precision,
+        judge_tokens double precision,
+        scored_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX eval_scores_tenant_idx ON eval_scores (tenant_id, task_id, run_id);
+
+      CREATE TABLE eval_datasets (
+        id text PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        name text NOT NULL,
+        version text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE eval_dataset_cases (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL REFERENCES tenants(id),
+        dataset_id text NOT NULL REFERENCES eval_datasets(id),
+        case_id text NOT NULL,
+        trajectory jsonb NOT NULL,
+        added_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      GRANT SELECT, INSERT, UPDATE, DELETE ON eval_scores, eval_datasets, eval_dataset_cases TO toqar_app;
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO toqar_app;
+
+      ALTER TABLE eval_scores ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_eval_scores ON eval_scores
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+      ALTER TABLE eval_datasets ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_eval_datasets ON eval_datasets
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+      ALTER TABLE eval_dataset_cases ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_eval_dataset_cases ON eval_dataset_cases
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+    `,
+  },
 ];
