@@ -25,5 +25,7 @@
     "vitest": "^2.0.5",
     "@toqar/experiments": "workspace:*",
     "@toqar/billing": "workspace:*"
-  }
+  },
+  "license": "UNLICENSED",
+  "private": true
 }

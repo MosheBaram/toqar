@@ -74,3 +74,7 @@ wrapOpenAI(openai, toqar, ctx);                // every chat.completions.create
 const generate = wrapVercelAI(generateText, toqar, ctx);
 const callbacks = [toqarLangChainCallbacks(toqar, ctx)]; // LangChain/LangGraph
 ```
+
+## License
+
+MIT-licensed — the open adoption surface (see `LICENSING.md` at the repo root).

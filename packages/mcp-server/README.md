@@ -33,3 +33,7 @@ Tenant scoping is by construction: one server instance per tenant token;
 every compiled query binds that tenant id. The e2e suite drives a real
 MCP client over a linked transport and answers the validation question
 log's cost question through the protocol.
+
+## License
+
+MIT-licensed — open for registry listing and inspection (see `LICENSING.md` at the repo root).
