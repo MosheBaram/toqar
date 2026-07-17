@@ -59,3 +59,18 @@ pnpm --filter @toqar/sdk test
 
 `client.test.ts` drives the client with an injected `fetchImpl` — batching,
 buffer eviction, retries, the kill switch, and never-throw delivery.
+
+## Framework wrappers (spec: sdk-node)
+
+Zero-PR first data: wrap the client the app already has and `step_executed`
+events flow — no manual `track()` calls, same registry contract as
+agent-planned instrumentation, same never-block guarantees.
+
+```ts
+import { wrapAnthropic, wrapOpenAI, wrapVercelAI, toqarLangChainCallbacks } from '@toqar/sdk';
+
+wrapAnthropic(anthropic, toqar, ctx);          // every messages.create
+wrapOpenAI(openai, toqar, ctx);                // every chat.completions.create
+const generate = wrapVercelAI(generateText, toqar, ctx);
+const callbacks = [toqarLangChainCallbacks(toqar, ctx)]; // LangChain/LangGraph
+```

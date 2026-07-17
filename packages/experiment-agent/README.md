@@ -31,3 +31,13 @@ registry.
 `list_experiments` and `get_verdict` expose experiments and verdicts to
 customers' own agents through the MCP server — read-only, tenant-scoped,
 with the same citation contract.
+
+## Guardrailed autonomous rollout (spec: autonomous-rollout)
+
+`runGuardedRollout` — autonomy level 3, the loop's last mile: canary
+(clamped to the tenant's declared traffic cap) → the always-valid
+sequential monitor → auto-promote only on a valid win / immediate
+auto-rollback on a guardrail breach — with the live grant re-checked every
+step (revocation halts safely) and everything outside the declared change
+classes falling back to the human path, audited. Level 2 and below behave
+exactly as before: nothing auto-promotes.

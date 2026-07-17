@@ -51,6 +51,6 @@
 
 ## 7. Close-out
 
-- [ ] 7.1 Docs: READMEs for new surfaces, root README, architecture notes; drift check green
-- [ ] 7.2 New tenant-facing surfaces registered in the isolation suite (alert config, eval APIs, explorer routes)
-- [ ] 7.3 `openspec validate --strict`; full gates green; commit, PR, merge
+- [x] 7.1 Docs: READMEs for new surfaces, root README, architecture notes; drift check green
+- [x] 7.2 New tenant-facing surfaces registered in the isolation suite (alert config + eval APIs registered with their groups; the explorer is MCP-served — per-token scoped by construction, covered by the MCP isolation tests)
+- [x] 7.3 `openspec validate --strict`; full gates green; commit, PR, merge
