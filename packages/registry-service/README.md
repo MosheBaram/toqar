@@ -48,3 +48,21 @@ await db.close();
 ```
 
 Expected output: `seeded entries: ok (10)`. (Build first: `pnpm build`.)
+
+## RLS on the served path (spec: tenancy)
+
+Every tenant-scoped store method runs inside `tenantTransaction` — a
+transaction under the non-owner `toqar_app` role with `app.tenant` bound
+transaction-locally — so the row-level policies apply to the service's own
+queries (proven by `served-path-rls.test.ts`: an unscoped query inside the
+store's own transaction sees only that tenant's rows, writes are pinned by
+WITH CHECK, and unset context matches nothing). Policies use the
+once-per-statement initPlan form. Deliberate owner-run paths, each
+inherently cross-tenant or pre-tenant: token resolution by hash, tenant
+creation, the benchmarking cohort, and the operator plane.
+
+Production posture: the service's login role needs `GRANT toqar_app TO
+<login>` (to `SET LOCAL ROLE`); run migrations as the owner; with PgBouncer
+use transaction pooling — tenant context is only ever set with
+transaction-local `set_config`, so it cannot leak across pooled
+connections. Use managed-Postgres PITR with restores actually exercised.

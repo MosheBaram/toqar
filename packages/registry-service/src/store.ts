@@ -131,10 +131,26 @@ function parseEntry(value: unknown): RegistryEntry {
   return parsed.data;
 }
 
+/**
+ * RLS is engaged on the served path (spec: tenancy): every tenant-scoped
+ * method below runs inside `tenantTransaction` — the non-owner toqar_app
+ * role with the tenant GUC bound transaction-locally — so the row-level
+ * policies apply to the store's own queries, not only to a test harness.
+ * The deliberate owner-run exceptions, each inherently cross-tenant or
+ * pre-tenant: `createTenant` (the tenant row does not exist yet),
+ * `resolveToken`/`findTenantByToken` (credential lookup by hash across
+ * tenants), and `optedInTenants` (the audited benchmarking cohort).
+ * The operator plane (OperatorStore) is owner-run by design.
+ */
 export class RegistryStore {
   constructor(private readonly db: SqlExecutor) {}
 
-  /** Creates a tenant and seeds the TOQAR default taxonomy. The token is returned exactly once. */
+  /** Every tenant-scoped operation goes through here — one transaction, RLS bound. */
+  private scoped<T>(tenantId: string, fn: (tx: SqlRunner) => Promise<T>): Promise<T> {
+    return this.db.tenantTransaction(tenantId, fn);
+  }
+
+  /** Creates a tenant and seeds the TOQAR default taxonomy. The token is returned exactly once. Owner-run: the tenant row does not exist yet. */
   async createTenant(name: string): Promise<{ tenantId: string; token: string }> {
     const tenantId = `t_${randomUUID()}`;
     const token = `tok_${randomUUID()}`;
@@ -156,7 +172,7 @@ export class RegistryStore {
     return { tenantId, token };
   }
 
-  /** Scope-aware auth resolution; revoked tokens fail everywhere, immediately. */
+  /** Scope-aware auth resolution; revoked tokens fail everywhere, immediately. Owner-run: lookup by hash is inherently cross-tenant. */
   async resolveToken(token: string): Promise<{ tenantId: string; scope: string } | null> {
     const { rows } = await this.db.query(
       'SELECT tenant_id, scope FROM tenant_tokens WHERE token_hash = $1 AND revoked_at IS NULL',
@@ -180,7 +196,7 @@ export class RegistryStore {
     const token = `tok_${randomUUID()}`;
     const tokenId = `tk_${randomUUID()}`;
     const prefix = token.slice(0, 12);
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       await tx.query(
         'INSERT INTO tenant_tokens (id, tenant_id, token_hash, prefix, scope) VALUES ($1, $2, $3, $4, $5)',
         [tokenId, tenantId, hashToken(token), prefix, parsed.data.scope],
@@ -195,15 +211,17 @@ export class RegistryStore {
   }
 
   async listTokens(tenantId: string): Promise<Record<string, unknown>[]> {
-    const { rows } = await this.db.query(
-      'SELECT id AS token_id, prefix, scope, issued_at, revoked_at FROM tenant_tokens WHERE tenant_id = $1 ORDER BY issued_at',
-      [tenantId],
-    );
-    return rows;
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT id AS token_id, prefix, scope, issued_at, revoked_at FROM tenant_tokens WHERE tenant_id = $1 ORDER BY issued_at',
+        [tenantId],
+      );
+      return rows;
+    });
   }
 
   async revokeToken(tenantId: string, tokenId: string, actor: string): Promise<boolean> {
-    return this.db.transaction(async (tx) => {
+    return this.scoped(tenantId, async (tx) => {
       const { rows } = await tx.query(
         'SELECT prefix FROM tenant_tokens WHERE tenant_id = $1 AND id = $2 AND revoked_at IS NULL',
         [tenantId, tokenId],
@@ -222,7 +240,11 @@ export class RegistryStore {
   }
 
   async listEntries(tenantId: string): Promise<RegistryEntry[]> {
-    const { rows } = await this.db.query(
+    return this.scoped(tenantId, (tx) => this.listEntriesVia(tx, tenantId));
+  }
+
+  private async listEntriesVia(tx: SqlRunner, tenantId: string): Promise<RegistryEntry[]> {
+    const { rows } = await tx.query(
       'SELECT entry FROM registry_entries WHERE tenant_id = $1 ORDER BY event',
       [tenantId],
     );
@@ -230,16 +252,12 @@ export class RegistryStore {
   }
 
   async getEntry(tenantId: string, event: string): Promise<RegistryEntry | null> {
-    const { rows } = await this.db.query(
-      'SELECT entry FROM registry_entries WHERE tenant_id = $1 AND event = $2',
-      [tenantId, event],
-    );
-    return rows.length ? parseEntry(rows[0]!.entry) : null;
+    return this.scoped(tenantId, (tx) => this.getEntryVia(tx, tenantId, event));
   }
 
   async putEntry(tenantId: string, value: unknown, actor: string): Promise<RegistryEntry> {
     const entry = parseEntry(value);
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       const before = await this.getEntryVia(tx, tenantId, entry.event);
       await this.writeEntry(tx, tenantId, entry);
       await this.audit(tx, tenantId, actor, 'put', entry.event, before, entry);
@@ -249,7 +267,11 @@ export class RegistryStore {
 
   /** Hash of the tenant's current registry state (design D5 stale-check). */
   async fingerprint(tenantId: string): Promise<string> {
-    const entries = await this.listEntries(tenantId);
+    return this.scoped(tenantId, (tx) => this.fingerprintVia(tx, tenantId));
+  }
+
+  private async fingerprintVia(tx: SqlRunner, tenantId: string): Promise<string> {
+    const entries = await this.listEntriesVia(tx, tenantId);
     return `fp_${createHash('sha256').update(JSON.stringify(entries)).digest('hex').slice(0, 16)}`;
   }
 
@@ -268,14 +290,14 @@ export class RegistryStore {
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
     const plan = parsed.data;
 
-    const current = await this.fingerprint(tenantId);
-    if (fingerprint !== current) {
-      throw new ConflictError(
-        `stale fingerprint: plan was computed against ${fingerprint}, registry is at ${current} — re-run the diff`,
-      );
-    }
+    return this.scoped(tenantId, async (tx) => {
+      const current = await this.fingerprintVia(tx, tenantId);
+      if (fingerprint !== current) {
+        throw new ConflictError(
+          `stale fingerprint: plan was computed against ${fingerprint}, registry is at ${current} — re-run the diff`,
+        );
+      }
 
-    return this.db.transaction(async (tx) => {
       for (const planned of plan.added) {
         if (await this.getEntryVia(tx, tenantId, planned.event)) {
           throw new ConflictError(`added event already exists: ${planned.event}`);
@@ -319,7 +341,7 @@ export class RegistryStore {
     const parsed = seamMapSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
     const map = parsed.data;
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       await tx.query(
         `INSERT INTO repo_context (tenant_id, repo, seam_map, agent_version, produced_at)
          VALUES ($1, $2, $3, $4, $5)
@@ -338,14 +360,16 @@ export class RegistryStore {
   }
 
   async getSeamMap(tenantId: string, repo: string): Promise<SeamMap | null> {
-    const { rows } = await this.db.query(
-      'SELECT seam_map FROM repo_context WHERE tenant_id = $1 AND repo = $2',
-      [tenantId, repo],
-    );
-    if (!rows.length) return null;
-    const parsed = seamMapSchema.safeParse(rows[0]!.seam_map);
-    if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    return parsed.data;
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT seam_map FROM repo_context WHERE tenant_id = $1 AND repo = $2',
+        [tenantId, repo],
+      );
+      if (!rows.length) return null;
+      const parsed = seamMapSchema.safeParse(rows[0]!.seam_map);
+      if (!parsed.success) throw new ValidationError(parsed.error.issues);
+      return parsed.data;
+    });
   }
 
   /** Records a delivered instrumentation run — merge rate derives from these. */
@@ -358,7 +382,7 @@ export class RegistryStore {
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
     const run = parsed.data;
     const runId = `run_${randomUUID()}`;
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       await tx.query(
         `INSERT INTO instrument_runs (id, tenant_id, repo, pr_url, tokens_in, tokens_out, cost_usd, model, agent_version)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -391,7 +415,7 @@ export class RegistryStore {
   ): Promise<boolean> {
     const parsed = runOutcomeSchema.safeParse(outcomeValue);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    return this.db.transaction(async (tx) => {
+    return this.scoped(tenantId, async (tx) => {
       const { rows } = await tx.query(
         'SELECT outcome, repo FROM instrument_runs WHERE tenant_id = $1 AND id = $2',
         [tenantId, runId],
@@ -414,15 +438,17 @@ export class RegistryStore {
     runs: Record<string, unknown>[];
     merge_rate: { merged: number; delivered: number };
   }> {
-    const { rows } = await this.db.query(
-      `SELECT id, repo, pr_url, outcome, tokens_in, tokens_out, cost_usd, model, agent_version, delivered_at
-       FROM instrument_runs WHERE tenant_id = $1 ORDER BY delivered_at DESC`,
-      [tenantId],
-    );
-    const merged = rows.filter(
-      (r) => r.outcome === 'merged' || r.outcome === 'edited_then_merged',
-    ).length;
-    return { runs: rows, merge_rate: { merged, delivered: rows.length } };
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        `SELECT id, repo, pr_url, outcome, tokens_in, tokens_out, cost_usd, model, agent_version, delivered_at
+         FROM instrument_runs WHERE tenant_id = $1 ORDER BY delivered_at DESC`,
+        [tenantId],
+      );
+      const merged = rows.filter(
+        (r) => r.outcome === 'merged' || r.outcome === 'edited_then_merged',
+      ).length;
+      return { runs: rows, merge_rate: { merged, delivered: rows.length } };
+    });
   }
 
   /**
@@ -437,15 +463,18 @@ export class RegistryStore {
   ): Promise<{ finding_id: string } | { rejected: true; uncited: string[] }> {
     const citations = validateFindingCitations(value);
     if (!citations.ok) {
-      await this.db.query(
-        'INSERT INTO finding_rejections (tenant_id, reason, draft) VALUES ($1, $2, $3)',
-        [tenantId, `uncited numbers: ${citations.uncited.join(', ')}`, JSON.stringify(value)],
+      await this.scoped(tenantId, (tx) =>
+        tx.query('INSERT INTO finding_rejections (tenant_id, reason, draft) VALUES ($1, $2, $3)', [
+          tenantId,
+          `uncited numbers: ${citations.uncited.join(', ')}`,
+          JSON.stringify(value),
+        ]),
       );
       return { rejected: true, uncited: citations.uncited };
     }
     const finding = findingSchema.parse(value);
     const findingId = `f_${randomUUID()}`;
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       await tx.query('INSERT INTO findings (id, tenant_id, finding) VALUES ($1, $2, $3)', [
         findingId,
         tenantId,
@@ -461,33 +490,37 @@ export class RegistryStore {
   }
 
   async listFindings(tenantId: string, limit = 50): Promise<Record<string, unknown>[]> {
-    const { rows } = await this.db.query(
-      'SELECT id, finding, published_at FROM findings WHERE tenant_id = $1 ORDER BY published_at DESC, id LIMIT $2',
-      [tenantId, limit],
-    );
-    return rows.map((r) => ({
-      finding_id: r.id,
-      published_at: String(r.published_at),
-      ...(r.finding as Record<string, unknown>),
-    }));
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT id, finding, published_at FROM findings WHERE tenant_id = $1 ORDER BY published_at DESC, id LIMIT $2',
+        [tenantId, limit],
+      );
+      return rows.map((r) => ({
+        finding_id: r.id,
+        published_at: String(r.published_at),
+        ...(r.finding as Record<string, unknown>),
+      }));
+    });
   }
 
   async getFinding(tenantId: string, findingId: string): Promise<Record<string, unknown> | null> {
-    const { rows } = await this.db.query(
-      'SELECT id, finding, published_at FROM findings WHERE tenant_id = $1 AND id = $2',
-      [tenantId, findingId],
-    );
-    if (!rows.length) return null;
-    const deliveries = await this.db.query(
-      'SELECT channel, status, detail, attempted_at FROM finding_deliveries WHERE tenant_id = $1 AND finding_id = $2 ORDER BY id DESC',
-      [tenantId, findingId],
-    );
-    return {
-      finding_id: rows[0]!.id,
-      published_at: String(rows[0]!.published_at),
-      ...(rows[0]!.finding as Record<string, unknown>),
-      deliveries: deliveries.rows,
-    };
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT id, finding, published_at FROM findings WHERE tenant_id = $1 AND id = $2',
+        [tenantId, findingId],
+      );
+      if (!rows.length) return null;
+      const deliveries = await tx.query(
+        'SELECT channel, status, detail, attempted_at FROM finding_deliveries WHERE tenant_id = $1 AND finding_id = $2 ORDER BY id DESC',
+        [tenantId, findingId],
+      );
+      return {
+        finding_id: rows[0]!.id,
+        published_at: String(rows[0]!.published_at),
+        ...(rows[0]!.finding as Record<string, unknown>),
+        deliveries: deliveries.rows,
+      };
+    });
   }
 
   async recordDelivery(
@@ -497,24 +530,28 @@ export class RegistryStore {
   ): Promise<boolean> {
     const parsed = deliverySchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    const { rows } = await this.db.query(
-      'SELECT id FROM findings WHERE tenant_id = $1 AND id = $2',
-      [tenantId, findingId],
-    );
-    if (!rows.length) return false;
-    await this.db.query(
-      'INSERT INTO finding_deliveries (tenant_id, finding_id, channel, status, detail) VALUES ($1, $2, $3, $4, $5)',
-      [tenantId, findingId, parsed.data.channel, parsed.data.status, parsed.data.detail ?? null],
-    );
-    return true;
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT id FROM findings WHERE tenant_id = $1 AND id = $2',
+        [tenantId, findingId],
+      );
+      if (!rows.length) return false;
+      await tx.query(
+        'INSERT INTO finding_deliveries (tenant_id, finding_id, channel, status, detail) VALUES ($1, $2, $3, $4, $5)',
+        [tenantId, findingId, parsed.data.channel, parsed.data.status, parsed.data.detail ?? null],
+      );
+      return true;
+    });
   }
 
   async listFindingRejections(tenantId: string): Promise<Record<string, unknown>[]> {
-    const { rows } = await this.db.query(
-      'SELECT reason, draft, created_at FROM finding_rejections WHERE tenant_id = $1 ORDER BY id DESC',
-      [tenantId],
-    );
-    return rows;
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT reason, draft, created_at FROM finding_rejections WHERE tenant_id = $1 ORDER BY id DESC',
+        [tenantId],
+      );
+      return rows;
+    });
   }
 
   /** The autonomy dial: each rung is an explicit, audited grant. Default 0. */
@@ -522,18 +559,20 @@ export class RegistryStore {
     level: number;
     history: Record<string, unknown>[];
   }> {
-    const { rows } = await this.db.query(
-      'SELECT level, granted_by, granted_at FROM autonomy_grants WHERE tenant_id = $1 ORDER BY id DESC',
-      [tenantId],
-    );
-    return { level: rows.length ? Number(rows[0]!.level) : 0, history: rows };
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT level, granted_by, granted_at FROM autonomy_grants WHERE tenant_id = $1 ORDER BY id DESC',
+        [tenantId],
+      );
+      return { level: rows.length ? Number(rows[0]!.level) : 0, history: rows };
+    });
   }
 
   async grantAutonomy(tenantId: string, value: unknown, actor: string): Promise<{ level: number }> {
     const parsed = autonomyGrantSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
     const grant = parsed.data;
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       await tx.query(
         'INSERT INTO autonomy_grants (tenant_id, level, granted_by) VALUES ($1, $2, $3)',
         [tenantId, grant.level, grant.granted_by],
@@ -548,7 +587,7 @@ export class RegistryStore {
     const parsed = experimentSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
     const experimentId = `exp_${randomUUID()}`;
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       await tx.query('INSERT INTO experiments (id, tenant_id, experiment) VALUES ($1, $2, $3)', [
         experimentId,
         tenantId,
@@ -565,7 +604,7 @@ export class RegistryStore {
   async updateExperiment(tenantId: string, id: string, value: unknown, actor: string): Promise<boolean> {
     const parsed = experimentStatusSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    return this.db.transaction(async (tx) => {
+    return this.scoped(tenantId, async (tx) => {
       const { rows } = await tx.query('SELECT status FROM experiments WHERE tenant_id = $1 AND id = $2', [tenantId, id]);
       if (!rows.length) return false;
       await tx.query(
@@ -580,7 +619,7 @@ export class RegistryStore {
   async writeVerdict(tenantId: string, id: string, value: unknown, actor: string): Promise<boolean> {
     const parsed = verdictSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    return this.db.transaction(async (tx) => {
+    return this.scoped(tenantId, async (tx) => {
       const { rows } = await tx.query('SELECT id FROM experiments WHERE tenant_id = $1 AND id = $2', [tenantId, id]);
       if (!rows.length) return false;
       await tx.query(
@@ -595,37 +634,41 @@ export class RegistryStore {
   }
 
   async listExperiments(tenantId: string): Promise<Record<string, unknown>[]> {
-    const { rows } = await this.db.query(
-      'SELECT id, experiment, status, variant_pr_url, created_at FROM experiments WHERE tenant_id = $1 ORDER BY created_at DESC, id',
-      [tenantId],
-    );
-    return rows.map((r) => ({
-      experiment_id: r.id,
-      status: r.status,
-      variant_pr_url: r.variant_pr_url,
-      created_at: String(r.created_at),
-      ...(r.experiment as Record<string, unknown>),
-    }));
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT id, experiment, status, variant_pr_url, created_at FROM experiments WHERE tenant_id = $1 ORDER BY created_at DESC, id',
+        [tenantId],
+      );
+      return rows.map((r) => ({
+        experiment_id: r.id,
+        status: r.status,
+        variant_pr_url: r.variant_pr_url,
+        created_at: String(r.created_at),
+        ...(r.experiment as Record<string, unknown>),
+      }));
+    });
   }
 
   async getExperiment(tenantId: string, id: string): Promise<Record<string, unknown> | null> {
-    const { rows } = await this.db.query(
-      'SELECT id, experiment, status, variant_pr_url, created_at FROM experiments WHERE tenant_id = $1 AND id = $2',
-      [tenantId, id],
-    );
-    if (!rows.length) return null;
-    const verdict = await this.db.query(
-      'SELECT verdict, decided_at FROM experiment_verdicts WHERE tenant_id = $1 AND experiment_id = $2',
-      [tenantId, id],
-    );
-    return {
-      experiment_id: rows[0]!.id,
-      status: rows[0]!.status,
-      variant_pr_url: rows[0]!.variant_pr_url,
-      created_at: String(rows[0]!.created_at),
-      ...(rows[0]!.experiment as Record<string, unknown>),
-      verdict: verdict.rows.length ? verdict.rows[0]!.verdict : null,
-    };
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT id, experiment, status, variant_pr_url, created_at FROM experiments WHERE tenant_id = $1 AND id = $2',
+        [tenantId, id],
+      );
+      if (!rows.length) return null;
+      const verdict = await tx.query(
+        'SELECT verdict, decided_at FROM experiment_verdicts WHERE tenant_id = $1 AND experiment_id = $2',
+        [tenantId, id],
+      );
+      return {
+        experiment_id: rows[0]!.id,
+        status: rows[0]!.status,
+        variant_pr_url: rows[0]!.variant_pr_url,
+        created_at: String(rows[0]!.created_at),
+        ...(rows[0]!.experiment as Record<string, unknown>),
+        verdict: verdict.rows.length ? verdict.rows[0]!.verdict : null,
+      };
+    });
   }
 
   /**
@@ -637,96 +680,110 @@ export class RegistryStore {
     const parsed = milestoneSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
     const column = MILESTONE_COLUMN[parsed.data.milestone];
-    await this.db.query(
-      `INSERT INTO onboarding_timeline (tenant_id, ${column}) VALUES ($1, $2)
-       ON CONFLICT (tenant_id) DO UPDATE SET ${column} = $2`,
-      [tenantId, parsed.data.at],
+    await this.scoped(tenantId, (tx) =>
+      tx.query(
+        `INSERT INTO onboarding_timeline (tenant_id, ${column}) VALUES ($1, $2)
+         ON CONFLICT (tenant_id) DO UPDATE SET ${column} = $2`,
+        [tenantId, parsed.data.at],
+      ),
     );
   }
 
   async getOnboarding(tenantId: string): Promise<Record<string, unknown>> {
-    const { rows } = await this.db.query(
-      'SELECT connected_at, plan_proposed_at, plan_approved_at, first_event_at, first_finding_at FROM onboarding_timeline WHERE tenant_id = $1',
-      [tenantId],
-    );
-    const t = (rows[0] ?? {}) as Record<string, string | null>;
-    const iso = (v: string | null | undefined) => (v ? new Date(String(v)).toISOString() : null);
-    const connected = iso(t.connected_at);
-    const firstFinding = iso(t.first_finding_at);
-    const step = firstFinding
-      ? 'active'
-      : t.first_event_at
-        ? 'awaiting_first_finding'
-        : t.plan_approved_at
-          ? 'awaiting_data'
-          : t.plan_proposed_at
-            ? 'review_plan'
-            : connected
-              ? 'awaiting_plan'
-              : 'connect_repo';
-    return {
-      connected_at: connected,
-      plan_proposed_at: iso(t.plan_proposed_at),
-      plan_approved_at: iso(t.plan_approved_at),
-      first_event_at: iso(t.first_event_at),
-      first_finding_at: firstFinding,
-      current_step: step,
-      time_to_first_finding_ms:
-        connected && firstFinding ? new Date(firstFinding).getTime() - new Date(connected).getTime() : null,
-    };
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT connected_at, plan_proposed_at, plan_approved_at, first_event_at, first_finding_at FROM onboarding_timeline WHERE tenant_id = $1',
+        [tenantId],
+      );
+      const t = (rows[0] ?? {}) as Record<string, string | null>;
+      const iso = (v: string | null | undefined) => (v ? new Date(String(v)).toISOString() : null);
+      const connected = iso(t.connected_at);
+      const firstFinding = iso(t.first_finding_at);
+      const step = firstFinding
+        ? 'active'
+        : t.first_event_at
+          ? 'awaiting_first_finding'
+          : t.plan_approved_at
+            ? 'awaiting_data'
+            : t.plan_proposed_at
+              ? 'review_plan'
+              : connected
+                ? 'awaiting_plan'
+                : 'connect_repo';
+      return {
+        connected_at: connected,
+        plan_proposed_at: iso(t.plan_proposed_at),
+        plan_approved_at: iso(t.plan_approved_at),
+        first_event_at: iso(t.first_event_at),
+        first_finding_at: firstFinding,
+        current_step: step,
+        time_to_first_finding_ms:
+          connected && firstFinding ? new Date(firstFinding).getTime() - new Date(connected).getTime() : null,
+      };
+    });
   }
 
   /** Billing account: tier + Stripe provider references. No card data, ever. */
   async getBilling(tenantId: string): Promise<Record<string, unknown>> {
-    const { rows } = await this.db.query(
-      'SELECT tier, customer_id, subscription_id FROM billing_accounts WHERE tenant_id = $1',
-      [tenantId],
-    );
-    const a = (rows[0] ?? {}) as Record<string, string | null>;
-    return {
-      tier: a.tier ?? 'starter',
-      customer_id: a.customer_id ?? null,
-      subscription_id: a.subscription_id ?? null,
-    };
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT tier, customer_id, subscription_id FROM billing_accounts WHERE tenant_id = $1',
+        [tenantId],
+      );
+      const a = (rows[0] ?? {}) as Record<string, string | null>;
+      return {
+        tier: a.tier ?? 'starter',
+        customer_id: a.customer_id ?? null,
+        subscription_id: a.subscription_id ?? null,
+      };
+    });
   }
 
   async setBilling(tenantId: string, value: unknown): Promise<void> {
     const parsed = billingAccountSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    await this.db.query(
-      `INSERT INTO billing_accounts (tenant_id, tier, customer_id, subscription_id) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (tenant_id) DO UPDATE SET tier = $2, customer_id = $3, subscription_id = $4, updated_at = now()`,
-      [tenantId, parsed.data.tier, parsed.data.customer_id ?? null, parsed.data.subscription_id ?? null],
+    await this.scoped(tenantId, (tx) =>
+      tx.query(
+        `INSERT INTO billing_accounts (tenant_id, tier, customer_id, subscription_id) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (tenant_id) DO UPDATE SET tier = $2, customer_id = $3, subscription_id = $4, updated_at = now()`,
+        [tenantId, parsed.data.tier, parsed.data.customer_id ?? null, parsed.data.subscription_id ?? null],
+      ),
     );
   }
 
   async recordInvoice(tenantId: string, value: unknown): Promise<void> {
     const parsed = invoiceSchema.safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    await this.db.query(
-      'INSERT INTO billing_invoices (tenant_id, stripe_invoice_id, amount_usd, period_start, period_end) VALUES ($1, $2, $3, $4, $5)',
-      [tenantId, parsed.data.stripe_invoice_id, parsed.data.amount_usd, parsed.data.period_start, parsed.data.period_end],
+    await this.scoped(tenantId, (tx) =>
+      tx.query(
+        'INSERT INTO billing_invoices (tenant_id, stripe_invoice_id, amount_usd, period_start, period_end) VALUES ($1, $2, $3, $4, $5)',
+        [tenantId, parsed.data.stripe_invoice_id, parsed.data.amount_usd, parsed.data.period_start, parsed.data.period_end],
+      ),
     );
   }
 
   async listInvoices(tenantId: string): Promise<Record<string, unknown>[]> {
-    const { rows } = await this.db.query(
-      'SELECT stripe_invoice_id, amount_usd, period_start, period_end, created_at FROM billing_invoices WHERE tenant_id = $1 ORDER BY created_at DESC',
-      [tenantId],
-    );
-    return rows;
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT stripe_invoice_id, amount_usd, period_start, period_end, created_at FROM billing_invoices WHERE tenant_id = $1 ORDER BY created_at DESC',
+        [tenantId],
+      );
+      return rows;
+    });
   }
 
   /** Benchmark opt-in state (spec: benchmarking-optin). Strictly opt-in, audited. */
   async getBenchmarkOptin(tenantId: string): Promise<{ opted_in: boolean }> {
-    const { rows } = await this.db.query('SELECT opted_in FROM benchmark_optin WHERE tenant_id = $1', [tenantId]);
-    return { opted_in: Boolean(rows[0]?.opted_in ?? false) };
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query('SELECT opted_in FROM benchmark_optin WHERE tenant_id = $1', [tenantId]);
+      return { opted_in: Boolean(rows[0]?.opted_in ?? false) };
+    });
   }
 
   async setBenchmarkOptin(tenantId: string, value: unknown, actor: string): Promise<void> {
     const parsed = z.object({ opted_in: z.boolean() }).safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       await tx.query(
         `INSERT INTO benchmark_optin (tenant_id, opted_in) VALUES ($1, $2)
          ON CONFLICT (tenant_id) DO UPDATE SET opted_in = $2, updated_at = now()`,
@@ -740,16 +797,18 @@ export class RegistryStore {
 
   /** Analytics retention window (spec: analytics-storage). Default 365. */
   async getRetentionDays(tenantId: string): Promise<number> {
-    const { rows } = await this.db.query('SELECT retention_days FROM tenants WHERE id = $1', [
-      tenantId,
-    ]);
-    return rows.length ? Number(rows[0]!.retention_days) : 365;
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query('SELECT retention_days FROM tenants WHERE id = $1', [
+        tenantId,
+      ]);
+      return rows.length ? Number(rows[0]!.retention_days) : 365;
+    });
   }
 
   async setRetentionDays(tenantId: string, value: unknown, actor: string): Promise<void> {
     const parsed = z.object({ retention_days: z.number().int().min(1).max(3650) }).safeParse(value);
     if (!parsed.success) throw new ValidationError(parsed.error.issues);
-    await this.db.transaction(async (tx) => {
+    await this.scoped(tenantId, async (tx) => {
       const before = await tx.query('SELECT retention_days FROM tenants WHERE id = $1', [tenantId]);
       await tx.query('UPDATE tenants SET retention_days = $2 WHERE id = $1', [
         tenantId,
@@ -771,18 +830,20 @@ export class RegistryStore {
   }
 
   async listAudit(tenantId: string, limit = 100): Promise<AuditRecord[]> {
-    const { rows } = await this.db.query(
-      'SELECT id, actor, operation, event, diff, created_at FROM audit_log WHERE tenant_id = $1 ORDER BY id DESC LIMIT $2',
-      [tenantId, limit],
-    );
-    return rows.map((r) => ({
-      id: Number(r.id),
-      actor: r.actor as string,
-      operation: r.operation as AuditRecord['operation'],
-      event: r.event as string,
-      diff: r.diff as AuditRecord['diff'],
-      created_at: String(r.created_at),
-    }));
+    return this.scoped(tenantId, async (tx) => {
+      const { rows } = await tx.query(
+        'SELECT id, actor, operation, event, diff, created_at FROM audit_log WHERE tenant_id = $1 ORDER BY id DESC LIMIT $2',
+        [tenantId, limit],
+      );
+      return rows.map((r) => ({
+        id: Number(r.id),
+        actor: r.actor as string,
+        operation: r.operation as AuditRecord['operation'],
+        event: r.event as string,
+        diff: r.diff as AuditRecord['diff'],
+        created_at: String(r.created_at),
+      }));
+    });
   }
 
   private async getEntryVia(
