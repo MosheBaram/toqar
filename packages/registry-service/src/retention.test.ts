@@ -35,4 +35,14 @@ describe('per-tenant analytics retention (spec: analytics-storage)', () => {
     await expect(store.setRetentionDays(tenantId, { retention_days: 4000 }, 'x')).rejects.toThrow(ValidationError);
     await expect(store.setRetentionDays(tenantId, { retention_days: 1.5 }, 'x')).rejects.toThrow(ValidationError);
   });
+
+
+  it('residency tags route deterministically and are audited (spec: data-governance)', async () => {
+    expect((await store.getIngestSettings(tenantId)).residency).toBe('us');
+    await store.setResidency(tenantId, { residency: 'eu' }, 'founder');
+    expect((await store.getIngestSettings(tenantId)).residency).toBe('eu');
+    const audit = await store.listAudit(tenantId);
+    expect(audit.some((a) => a.event === 'residency_eu')).toBe(true);
+    await expect(store.setResidency(tenantId, { residency: 'mars' }, 'x')).rejects.toThrow(ValidationError);
+  });
 });
