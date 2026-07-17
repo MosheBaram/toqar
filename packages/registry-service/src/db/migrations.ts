@@ -324,55 +324,6 @@ export const MIGRATIONS: Migration[] = [
     `,
   },
   {
-    // Redaction-at-ingest control (spec: data-governance): redaction is the
-    // default; retaining un-redacted content is an explicit, audited,
-    // per-tenant opt-in.
-    id: '015_redaction_optout',
-    sql: `
-      ALTER TABLE tenants ADD COLUMN redaction_optout boolean NOT NULL DEFAULT false;
-    `,
-  },
-  {
-    // Per-tenant envelope-encryption keys (spec: data-governance). The
-    // wrapped DEK lives beside the data; nulling it is crypto-shredding —
-    // that tenant's ciphertext becomes permanently unreadable, nobody else
-    // affected. Tenant-scoped RLS like every tenant table.
-    id: '016_tenant_keys',
-    sql: `
-      CREATE TABLE tenant_keys (
-        tenant_id text PRIMARY KEY REFERENCES tenants(id),
-        wrapped_dek text,
-        created_at timestamptz NOT NULL DEFAULT now(),
-        shredded_at timestamptz
-      );
-      GRANT SELECT, INSERT, UPDATE, DELETE ON tenant_keys TO toqar_app;
-      ALTER TABLE tenant_keys ENABLE ROW LEVEL SECURITY;
-      CREATE POLICY tenant_isolation_tenant_keys ON tenant_keys
-        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
-        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
-    `,
-  },
-  {
-    // Erasure audit (spec: data-governance): every right-to-be-forgotten
-    // request from request to completion. Owner-only (erasure is operator
-    // work) and deliberately NOT foreign-keyed — the record must survive
-    // the tenant it erases.
-    id: '017_erasure_audit',
-    sql: `
-      CREATE TABLE erasure_audit (
-        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        tenant_id text NOT NULL,
-        scope text NOT NULL CHECK (scope IN ('tenant', 'end_user')),
-        subject text,
-        requested_by text NOT NULL,
-        requested_at timestamptz NOT NULL DEFAULT now(),
-        completed_at timestamptz,
-        detail jsonb NOT NULL DEFAULT '{}'::jsonb
-      );
-      CREATE INDEX erasure_audit_tenant_idx ON erasure_audit (tenant_id, id DESC);
-    `,
-  },
-  {
     // RLS engagement hardening (change: data-plane-hardening, group 5;
     // spec: tenancy delta).
     //
@@ -475,6 +426,66 @@ export const MIGRATIONS: Migration[] = [
       CREATE POLICY tenant_isolation_benchmark_optin ON benchmark_optin
         USING (tenant_id = (SELECT current_setting('app.tenant', true)))
         WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+    `,
+  },
+  {
+    // Redaction-at-ingest control (spec: data-governance): redaction is the
+    // default; retaining un-redacted content is an explicit, audited,
+    // per-tenant opt-in.
+    id: '015_redaction_optout',
+    sql: `
+      ALTER TABLE tenants ADD COLUMN redaction_optout boolean NOT NULL DEFAULT false;
+    `,
+  },
+  {
+    // Per-tenant envelope-encryption keys (spec: data-governance). The
+    // wrapped DEK lives beside the data; nulling it is crypto-shredding —
+    // that tenant's ciphertext becomes permanently unreadable, nobody else
+    // affected. Tenant-scoped RLS like every tenant table.
+    id: '016_tenant_keys',
+    sql: `
+      CREATE TABLE tenant_keys (
+        tenant_id text PRIMARY KEY REFERENCES tenants(id),
+        wrapped_dek text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        shredded_at timestamptz
+      );
+      GRANT SELECT, INSERT, UPDATE, DELETE ON tenant_keys TO toqar_app;
+      ALTER TABLE tenant_keys ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation_tenant_keys ON tenant_keys
+        USING (tenant_id = (SELECT current_setting('app.tenant', true)))
+        WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
+    `,
+  },
+  {
+    // Erasure audit (spec: data-governance): every right-to-be-forgotten
+    // request from request to completion. Owner-only (erasure is operator
+    // work) and deliberately NOT foreign-keyed — the record must survive
+    // the tenant it erases.
+    id: '017_erasure_audit',
+    sql: `
+      CREATE TABLE erasure_audit (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL,
+        scope text NOT NULL CHECK (scope IN ('tenant', 'end_user')),
+        subject text,
+        requested_by text NOT NULL,
+        requested_at timestamptz NOT NULL DEFAULT now(),
+        completed_at timestamptz,
+        detail jsonb NOT NULL DEFAULT '{}'::jsonb
+      );
+      CREATE INDEX erasure_audit_tenant_idx ON erasure_audit (tenant_id, id DESC);
+    `,
+  },
+  {
+    // Data residency (spec: data-governance): a deterministic tag on the
+    // tenant record routes its analytics ingest/query to the regional
+    // data-plane cluster. The control plane stays global with non-personal
+    // metadata only.
+    id: '018_residency',
+    sql: `
+      ALTER TABLE tenants ADD COLUMN residency text NOT NULL DEFAULT 'us'
+        CHECK (residency IN ('us', 'eu'));
     `,
   },
 ];

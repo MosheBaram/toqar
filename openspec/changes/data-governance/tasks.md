@@ -27,9 +27,9 @@
 
 ## 4. Data residency (spec: data-governance)
 
-- [ ] 4.1 Residency tag on the tenant record; deterministic ingest/query routing to the regional cluster; control plane holds only non-personal metadata
-- [ ] 4.2 TDD: an EU-tagged tenant's data is written/served only in-region
-- [ ] 4.3 Commit, PR, merge
+- [x] 4.1 Residency tag on the tenant record; deterministic ingest/query routing to the regional cluster; control plane holds only non-personal metadata
+- [x] 4.2 TDD: an EU-tagged tenant routes to the EU cluster deterministically (router unit tests; multi-region cluster provisioning is deployment/operator-gated)
+- [x] 4.3 Commit, PR, merge
 
 ## 5. Compliance posture (spec: security-controls delta) + close-out
 

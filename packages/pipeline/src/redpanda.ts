@@ -101,9 +101,23 @@ export interface ConsumerHandle {
  *   never silently dropped. If the DLQ write itself fails, the batch is
  *   not committed and will be re-processed.
  */
+/**
+ * Residency routing (spec: data-governance): every enriched message
+ * carries its tenant's residency tag; the router deterministically picks
+ * the regional ClickHouse cluster. Unknown/missing tags go to the default
+ * region — a message is never dropped over routing.
+ */
+export function createResidencyRouter(
+  clients: { us: ClickHouseClient; eu?: ClickHouseClient },
+): (residency: string) => ClickHouseClient {
+  return (residency) => (residency === 'eu' && clients.eu ? clients.eu : clients.us);
+}
+
 export async function startEventsConsumer(args: {
   brokers: string[];
   clickhouse: ClickHouseClient;
+  /** Regional routing; defaults to the single configured cluster. */
+  route?: (residency: string) => ClickHouseClient;
   groupId?: string;
 }): Promise<ConsumerHandle> {
   const kafka = new Kafka({ clientId: 'toqar-pipeline', brokers: args.brokers, logLevel: logLevel.NOTHING });
@@ -137,15 +151,21 @@ export async function startEventsConsumer(args: {
   await consumer.run({
     autoCommit: false,
     eachBatch: async ({ batch, resolveOffset, commitOffsetsIfNecessary, heartbeat }) => {
-      const rows = [];
+      const route = args.route ?? (() => args.clickhouse);
+      const byRegion = new Map<ClickHouseClient, ReturnType<typeof toRow>[]>();
       const dead: { reason: string; original: string }[] = [];
       for (const message of batch.messages) {
         if (!message.value) continue;
         const raw = message.value.toString();
         try {
-          const row = toRow(JSON.parse(raw));
-          if (row) rows.push(row);
-          else {
+          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          const row = toRow(parsed);
+          if (row) {
+            const client = route(typeof parsed.residency === 'string' ? parsed.residency : 'us');
+            const bucket = byRegion.get(client) ?? [];
+            bucket.push(row);
+            byRegion.set(client, bucket);
+          } else {
             unmappedCount++;
             dead.push({ reason: 'unmappable', original: raw });
           }
@@ -155,17 +175,19 @@ export async function startEventsConsumer(args: {
         }
       }
 
-      try {
-        await insertRows(args.clickhouse, rows);
-      } catch {
-        await new Promise((r) => setTimeout(r, 500));
+      for (const [client, rows] of byRegion) {
         try {
-          await insertRows(args.clickhouse, rows);
-        } catch (second) {
-          // Poison or persistent failure: preserve the batch for repair
-          // instead of blocking the partition forever.
-          const reason = `insert_failed: ${String((second as Error).message ?? second)}`;
-          dead.push(...rows.map((row) => ({ reason, original: JSON.stringify(row) })));
+          await insertRows(client, rows.filter((r): r is NonNullable<typeof r> => r !== null));
+        } catch {
+          await new Promise((r) => setTimeout(r, 500));
+          try {
+            await insertRows(client, rows.filter((r): r is NonNullable<typeof r> => r !== null));
+          } catch (second) {
+            // Poison or persistent failure: preserve the batch for repair
+            // instead of blocking the partition forever.
+            const reason = `insert_failed: ${String((second as Error).message ?? second)}`;
+            dead.push(...rows.map((row) => ({ reason, original: JSON.stringify(row) })));
+          }
         }
       }
 

@@ -861,16 +861,32 @@ export class RegistryStore {
   }
 
   /** One scoped read for everything the collector needs per request. */
-  async getIngestSettings(tenantId: string): Promise<{ retention_days: number; redact: boolean }> {
+  async getIngestSettings(
+    tenantId: string,
+  ): Promise<{ retention_days: number; redact: boolean; residency: string }> {
     return this.scoped(tenantId, async (tx) => {
       const { rows } = await tx.query(
-        'SELECT retention_days, redaction_optout FROM tenants WHERE id = $1',
+        'SELECT retention_days, redaction_optout, residency FROM tenants WHERE id = $1',
         [tenantId],
       );
       return {
         retention_days: rows.length ? Number(rows[0]!.retention_days) : 365,
         redact: rows.length ? !rows[0]!.redaction_optout : true,
+        residency: rows.length ? String(rows[0]!.residency) : 'us',
       };
+    });
+  }
+
+  /** Residency is deterministic routing state (spec: data-governance). Audited. */
+  async setResidency(tenantId: string, value: unknown, actor: string): Promise<void> {
+    const parsed = z.object({ residency: z.enum(['us', 'eu']) }).safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    await this.scoped(tenantId, async (tx) => {
+      await tx.query('UPDATE tenants SET residency = $2 WHERE id = $1', [
+        tenantId,
+        parsed.data.residency,
+      ]);
+      await this.audit(tx, tenantId, actor, 'retention', `residency_${parsed.data.residency}`, null, parsed.data);
     });
   }
 

@@ -15,6 +15,7 @@ declare module 'fastify' {
     collectorTenantId: string;
     collectorRetentionDays: number;
     collectorRedact: boolean;
+    collectorResidency: string;
   }
 }
 
@@ -57,6 +58,7 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
   app.decorateRequest('collectorTenantId', '');
   app.decorateRequest('collectorRetentionDays', 365);
   app.decorateRequest('collectorRedact', true);
+  app.decorateRequest('collectorResidency', 'us');
 
   app.get('/health', async () => {
     const health = sink.health();
@@ -76,6 +78,7 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
     const settings = await store.getIngestSettings(tenantId);
     req.collectorRetentionDays = settings.retention_days;
     req.collectorRedact = settings.redact;
+    req.collectorResidency = settings.residency;
   });
 
   app.post<{ Body: { events?: unknown[] } }>('/v1/events', async (req, reply) => {
@@ -96,6 +99,7 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
           ...(parsed.data as Record<string, unknown>),
           tenant_id: req.collectorTenantId,
           retention_days: req.collectorRetentionDays,
+          residency: req.collectorResidency,
         };
         if (req.collectorRedact) {
           const result = redactEvent(enriched);
@@ -143,6 +147,7 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
         ...e,
         tenant_id: req.collectorTenantId,
         retention_days: req.collectorRetentionDays,
+        residency: req.collectorResidency,
       };
       return req.collectorRedact ? redactEvent(withTenant).event : withTenant;
     });
