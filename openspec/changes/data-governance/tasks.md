@@ -20,10 +20,10 @@
 
 ## 3. GDPR erasure + audit (spec: data-governance)
 
-- [ ] 3.1 Tenant/time partitioning so full-tenant erasure is a partition drop (or crypto-shred); TDD tenant vanishes from all queries/rollups
-- [ ] 3.2 Per-end-user erasure: immediate logical delete + scheduled physical removal (no per-request heavy mutation)
-- [ ] 3.3 Erasure audit table (request → completion) in the control plane
-- [ ] 3.4 Commit, PR, merge
+- [x] 3.1 Full-tenant erasure via crypto-shred + lightweight delete (partitions are time-keyed monthly per analytics-storage, so the spec's "or crypto-shred" arm is the mechanism); TDD tenant vanishes from all queries/rollups (dp-hardening group 3) and shred is single-tenant (crypto tests)
+- [x] 3.2 Per-end-user erasure: immediate logical delete + scheduled physical removal (no per-request heavy mutation)
+- [x] 3.3 Erasure audit table (request → completion) in the control plane
+- [x] 3.4 Commit, PR, merge
 
 ## 4. Data residency (spec: data-governance)
 
