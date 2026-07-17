@@ -25,7 +25,7 @@ describe('billing account', () => {
     const res = await app.inject({ method: 'GET', url: '/v1/billing', headers: authed() });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.tier).toBe('starter');
+    expect(body.tier).toBe('free'); // PLG default (go-to-market §8.1)
     expect(body.customer_id).toBeNull();
   });
 

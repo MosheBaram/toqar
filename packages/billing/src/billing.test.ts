@@ -39,8 +39,10 @@ describe('tiers', () => {
   });
 
   it('resolves the smallest tier whose limit covers usage', () => {
-    const tier = resolveTier({ events_ingested: 5000, tasks_tracked: 100, agent_runs: 10 });
-    expect(tier.name).toBe('starter');
+    const tiny = resolveTier({ events_ingested: 5000, tasks_tracked: 100, agent_runs: 10 });
+    expect(tiny.name).toBe('free'); // evaluation traffic stays free
+    const mid = resolveTier({ events_ingested: 500_000, tasks_tracked: 20_000, agent_runs: 800 });
+    expect(mid.name).toBe('starter'); // a production agent outgrows free in weeks
     const big = resolveTier({ events_ingested: 5_000_000, tasks_tracked: 100_000, agent_runs: 5000 });
     expect(big.name).toBe('growth');
   });

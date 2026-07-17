@@ -611,4 +611,13 @@ export const MIGRATIONS: Migration[] = [
         WITH CHECK (tenant_id = (SELECT current_setting('app.tenant', true)));
     `,
   },
+  {
+    // Free Developer tier (docs/business/go-to-market.md §8.1, founder
+    // decision 2026-07-17): the PLG entry point. Explicit billing rows
+    // default to free; the store's implicit default matches.
+    id: '022_free_tier_default',
+    sql: `
+      ALTER TABLE billing_accounts ALTER COLUMN tier SET DEFAULT 'free';
+    `,
+  },
 ];

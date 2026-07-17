@@ -49,6 +49,14 @@ export interface Tier {
  */
 export const TIERS: Tier[] = [
   {
+    // The PLG entry point (docs/business/go-to-market.md §8.1): sized so a
+    // production agent outgrows it in weeks — evaluation is free, real
+    // volume is not.
+    name: 'free',
+    price_usd_month: 0,
+    limits: { events_ingested: 50_000, tasks_tracked: 10_000, agent_runs: 500 },
+  },
+  {
     name: 'starter',
     price_usd_month: 200,
     limits: { events_ingested: 1_000_000, tasks_tracked: 50_000, agent_runs: 1_000 },
