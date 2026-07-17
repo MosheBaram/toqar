@@ -23,5 +23,6 @@
     "@toqar/mcp-server": "workspace:*",
     "@toqar/analysis-agent": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0"
-  }
+  },
+  "license": "UNLICENSED"
 }

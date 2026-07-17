@@ -73,3 +73,7 @@ storage.
 
 Schema version `0.1.0`. Shape may change before `1.0.0`; the ten event
 names are stable. Feedback via issues welcome.
+
+## License
+
+MIT-licensed — **the open TOQAR standard** (see `LICENSING.md` at the repo root): adopt the schema freely; the framing is the point.

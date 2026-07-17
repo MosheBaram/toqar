@@ -226,6 +226,6 @@ discussion. Miss the gate → rerun the kill-criteria decision rules
 |---|----------|----------------|----------|
 | 1 | Production deploy (operator-gated since G3) | Do first — everything else assumes a live service | Self-serve, launch, partners |
 | 2 | Free Developer tier | **Implemented 2026-07-17** (50k events / 10k tasks / 500 runs; new tenants default to free) | Show HN, self-serve motion |
-| 3 | Open-source spec + SDK + MCP server | Yes (§9) — licensing + repo split | Registries, npm channel, framing war |
+| 3 | Open-source spec + SDK + MCP server | **Implemented 2026-07-17** (MIT in-repo — see LICENSING.md; npm publish/repo extraction operator-gated) | Registries, npm channel, framing war |
 | 4 | Design-partner recruiting (5 paid slots) | Start now with §6 terms | Revenue, case studies, benchmarks |
 | 5 | Benchmark gating (view on paid) | **Implemented 2026-07-17** (view = Growth + opted-in; gates answer by name) | Growth-tier pull |

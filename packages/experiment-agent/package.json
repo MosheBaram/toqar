@@ -20,5 +20,7 @@
     "vitest": "^2.0.5",
     "@toqar/registry-service": "workspace:*",
     "@electric-sql/pglite": "^0.2.12"
-  }
+  },
+  "license": "UNLICENSED",
+  "private": true
 }

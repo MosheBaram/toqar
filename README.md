@@ -88,6 +88,9 @@ encryption-at-rest and backups are deployment-gated and not yet live.
     pnpm test
     pnpm typecheck
 
+Licensing: the TOQAR standard (`packages/registry`), the SDK, and the MCP
+server are MIT; the engine is proprietary — see `LICENSING.md`.
+
 See `ARCHITECTURE.md` for how the packages and apps compose (the dependency
 graph, the control-plane/data-plane split, and the cross-cutting
 invariants), and `CONTRIBUTING.md` for the full clone-to-green setup,
