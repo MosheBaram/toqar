@@ -1,0 +1,10 @@
+<!-- claims: metrics=task_success_rate,cost_per_completed_task -->
+# Benchmarks
+
+Opt-in, and only opt-in: tenants that enable benchmarking
+(`PUT /v1/benchmark/optin`, audited) join anonymized cross-tenant cohorts
+— how does your `task_success_rate` or `cost_per_completed_task` compare
+to agents like yours? Cohorts are k-anonymized: a cohort below the
+minimum tenant count publishes nothing, and published aggregates are
+blended (mean/stddev/count) so no individual tenant's value is
+recoverable. Opting out stops contribution immediately.

@@ -13,6 +13,11 @@ The ten core events: `task_started`, `task_completed`, `task_failed`,
 - **[OpenTelemetry](./otel.md)** — bring your own OTel traces.
 - **[MCP](./mcp.md)** — query your analytics from your own agents.
 - **[Onboarding](./onboarding.md)** — connect a repo, get instrumented.
+- **[Evals](./evals.md)** — trajectory-level scorers, judges, datasets, CI gate.
+- **[Alerts](./alerts.md)** — thresholds, anomalies, eval regressions.
+- **[Autonomy](./autonomy.md)** — the dial, up to guardrailed rollout.
+- **[Data trust](./trust.md)** — redaction, encryption, retention, erasure.
+- **[Benchmarks](./benchmarks.md)** — opt-in, k-anonymized cohorts.
 - The **TOQAR layers**: [Task success](./layer-t.md) ·
   [Operational efficiency](./layer-o.md) · [Quality & drift](./layer-q.md) ·
   [Autonomy & trust](./layer-a.md) · [Retention](./layer-r.md).
