@@ -2,7 +2,7 @@ import { computeBenchmark } from '@toqar/analysis';
 import { buildApp, migrate, MIGRATIONS, RegistryStore } from '@toqar/registry-service';
 import { createPgliteExecutor } from '@toqar/registry-service/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { describeBenchmark, fetchOptin, setOptin } from './benchmark.js';
+import { describeBenchmark, describeBenchmarkView, fetchBenchmark, fetchOptin, setOptin } from './benchmark.js';
 
 const db = await createPgliteExecutor();
 const app = buildApp(db);
@@ -52,3 +52,29 @@ describe('benchmark view', () => {
     expect(text).not.toContain('t0');
   });
 });
+
+describe('benchmark viewing gate (go-to-market §8.2)', () => {
+  it('names the gate honestly in copy', () => {
+    expect(describeBenchmarkView({ kind: 'requires_growth' })).toContain('Growth');
+    expect(describeBenchmarkView({ kind: 'requires_optin' })).toContain('contributing');
+    expect(describeBenchmarkView({ kind: 'unavailable' })).toContain('not available');
+    expect(
+      describeBenchmarkView({
+        kind: 'result',
+        result: { suppressed: false, n: 6, distribution: { mean: 0.6, stddev: 0.05, count: 6 }, own_percentile: 40 },
+      }),
+    ).toContain('40th percentile');
+  });
+
+  it('maps the gate responses from the API', async () => {
+    const mk = (status: number, body: unknown) =>
+      (async () => ({ ok: status < 400, status, json: async () => body })) as unknown as typeof fetch;
+    globalThis.fetch = mk(403, { error: 'benchmark_requires_growth' }) as typeof fetch;
+    expect((await fetchBenchmark('http://x', 't', 'task_success_rate')).kind).toBe('requires_growth');
+    globalThis.fetch = mk(403, { error: 'benchmark_requires_optin' }) as typeof fetch;
+    expect((await fetchBenchmark('http://x', 't', 'task_success_rate')).kind).toBe('requires_optin');
+    globalThis.fetch = mk(503, { error: 'benchmark_source_unavailable' }) as typeof fetch;
+    expect((await fetchBenchmark('http://x', 't', 'task_success_rate')).kind).toBe('unavailable');
+  });
+});
+
