@@ -1,0 +1,110 @@
+import type { ClickHouseClient } from '@clickhouse/client';
+
+/**
+ * ClickHouse schema migrations (spec: analytics-storage). Ordered and
+ * append-only, mirroring the Postgres migration discipline in
+ * @toqar/registry-service: never edit an applied migration — add a new one.
+ * Applied ids are recorded in toqar.schema_migrations.
+ */
+export interface ChMigration {
+  id: string;
+  /** Statements run in order; each is one ClickHouse command. */
+  statements: string[];
+}
+
+export const CH_MIGRATIONS: ChMigration[] = [
+  {
+    // Events v2 (change: data-plane-hardening, group 1).
+    //
+    // - Sort key leads with the real query predicates (tenant, task_type,
+    //   event, time) instead of a random UUID; event_id stays LAST in the
+    //   ORDER BY so ReplacingMergeTree still converges redeliveries
+    //   (identical rows share the full key) without leading the index.
+    // - The fields the semantic layer reads on the hot path are typed
+    //   columns populated at transform time — no JSONExtract per read.
+    //   `payload` keeps the full event for the long tail.
+    // - Monthly partitions (daily × many tenants invites "too many parts").
+    // - Per-column ZSTD codecs on non-key columns; LowCardinality for
+    //   enum-like strings. Key columns keep default codecs.
+    //
+    // CREATE OR REPLACE: there is no production deployment (operator-gated);
+    // pre-migration dev tables carry no data of record and are rebuilt.
+    // From here on, schema changes are append-only ALTERs in new migrations.
+    id: '001_events_v2',
+    statements: [
+      `CREATE OR REPLACE TABLE toqar.events (
+        tenant_id           String,
+        task_type           LowCardinality(String),
+        event               LowCardinality(String),
+        timestamp           DateTime64(3, 'UTC'),
+        event_id            UUID,
+        task_id             String CODEC(ZSTD(1)),
+        run_id              String CODEC(ZSTD(1)),
+        session_id          String DEFAULT '' CODEC(ZSTD(1)),
+        agent_name          LowCardinality(String),
+        agent_version       String CODEC(ZSTD(1)),
+        tool_name           LowCardinality(String) DEFAULT '',
+        model               LowCardinality(String) DEFAULT '',
+        status              LowCardinality(String) DEFAULT '',
+        verification        LowCardinality(String) DEFAULT '',
+        initiator           LowCardinality(String) DEFAULT '',
+        retry_of_step_id    String DEFAULT '' CODEC(ZSTD(1)),
+        tokens_in           Float64 DEFAULT 0 CODEC(ZSTD(1)),
+        tokens_out          Float64 DEFAULT 0 CODEC(ZSTD(1)),
+        latency_ms          Float64 DEFAULT 0 CODEC(ZSTD(1)),
+        cost_usd            Float64 DEFAULT 0 CODEC(ZSTD(1)),
+        rating_value        Float64 DEFAULT 0 CODEC(ZSTD(1)),
+        edit_magnitude_value Float64 DEFAULT 0 CODEC(ZSTD(1)),
+        response_latency_ms Float64 DEFAULT 0 CODEC(ZSTD(1)),
+        payload             String CODEC(ZSTD(1))
+      )
+      ENGINE = ReplacingMergeTree
+      PARTITION BY toYYYYMM(timestamp)
+      PRIMARY KEY (tenant_id, task_type, event, timestamp)
+      ORDER BY (tenant_id, task_type, event, timestamp, event_id)`,
+      // Citation records: every executed metric query, resolvable by q_ id.
+      `CREATE TABLE IF NOT EXISTS toqar.executed_queries (
+        query_id    String,
+        metric      String,
+        sql         String CODEC(ZSTD(1)),
+        params      String CODEC(ZSTD(1)),
+        executed_at DateTime64(3, 'UTC')
+      )
+      ENGINE = MergeTree
+      ORDER BY (query_id, executed_at)`,
+    ],
+  },
+];
+
+/** Applies pending migrations in order; already-applied ids are skipped. */
+export async function chMigrate(
+  ch: ClickHouseClient,
+  migrations: ChMigration[] = CH_MIGRATIONS,
+): Promise<string[]> {
+  await ch.command({ query: 'CREATE DATABASE IF NOT EXISTS toqar' });
+  await ch.command({
+    query: `CREATE TABLE IF NOT EXISTS toqar.schema_migrations (
+      id text, applied_at DateTime64(3, 'UTC') DEFAULT now64(3)
+    ) ENGINE = MergeTree ORDER BY id`,
+  });
+  const result = await ch.query({
+    query: 'SELECT id FROM toqar.schema_migrations',
+    format: 'JSONEachRow',
+  });
+  const applied = new Set(((await result.json()) as { id: string }[]).map((r) => r.id));
+
+  const ran: string[] = [];
+  for (const migration of migrations) {
+    if (applied.has(migration.id)) continue;
+    for (const statement of migration.statements) {
+      await ch.command({ query: statement });
+    }
+    await ch.insert({
+      table: 'toqar.schema_migrations',
+      values: [{ id: migration.id }],
+      format: 'JSONEachRow',
+    });
+    ran.push(migration.id);
+  }
+  return ran;
+}

@@ -7,7 +7,10 @@ import { createHash } from 'node:crypto';
  * exact query identity (`q_…`) the product cites everywhere.
  *
  * Reads use FINAL: toqar.events is a ReplacingMergeTree deduped on
- * (tenant_id, event_id) at merge time (see @toqar/pipeline).
+ * (tenant_id, task_type, event, timestamp, event_id) at merge time (see
+ * @toqar/pipeline). Hot fields are typed columns (spec: analytics-storage)
+ * — no JSONExtract on the read path; missing values are '' / 0, the same
+ * coercion JSONExtract applied.
  */
 
 export type Layer = 'T' | 'O' | 'Q' | 'A' | 'R';
@@ -49,9 +52,6 @@ interface MetricDef {
   note?: string;
 }
 
-const prop = (name: string) => `JSONExtractString(payload, '${name}')`;
-const num = (name: string) => `JSONExtractFloat(payload, '${name}')`;
-
 const END_EVENTS = "event IN ('task_completed', 'task_failed', 'task_abandoned')";
 const HUMAN_TOUCH =
   "event IN ('handoff_to_human', 'human_approved', 'human_edited', 'human_overrode')";
@@ -68,7 +68,7 @@ export const METRICS: Record<string, MetricDef> = {
     layer: 'T',
     outer: (inner) =>
       `SELECT countIf(contested) / count() AS value, count() AS self_reported_tasks FROM (${inner} HAVING self_rep > 0)`,
-    select: `task_id, maxIf(1, event = 'task_completed' AND ${prop('verification')} = 'self_reported') AS self_rep, max(event IN ('human_edited', 'human_overrode') OR (event = 'feedback_given' AND JSONExtractFloat(payload, 'rating', 'value') = 0)) AS contested GROUP_BY task_id`,
+    select: `task_id, maxIf(1, event = 'task_completed' AND verification = 'self_reported') AS self_rep, max(event IN ('human_edited', 'human_overrode') OR (event = 'feedback_given' AND rating_value = 0)) AS contested GROUP_BY task_id`,
   },
   first_run_resolution: {
     layer: 'T',
@@ -86,12 +86,12 @@ export const METRICS: Record<string, MetricDef> = {
   /* ---------------- O — Operational Efficiency ---------------- */
   cost_per_completed_task: {
     layer: 'O',
-    select: `sum(JSONExtractFloat(payload, 'cost_usd')) / countIf(event = 'task_completed') AS value, sum(JSONExtractFloat(payload, 'cost_usd')) AS total_cost_usd`,
+    select: `sum(cost_usd) / countIf(event = 'task_completed') AS value, sum(cost_usd) AS total_cost_usd`,
   },
   tokens_per_task: {
     layer: 'O',
     where: "event = 'step_executed'",
-    select: `(sum(${num('tokens_in')}) + sum(${num('tokens_out')})) / uniqExact(task_id) AS value`,
+    select: `(sum(tokens_in) + sum(tokens_out)) / uniqExact(task_id) AS value`,
   },
   steps_per_task: {
     layer: 'O',
@@ -101,24 +101,24 @@ export const METRICS: Record<string, MetricDef> = {
   latency_p95: {
     layer: 'O',
     where: "event = 'step_executed'",
-    select: `quantile(0.95)(${num('latency_ms')}) AS value, quantile(0.5)(${num('latency_ms')}) AS p50`,
+    select: `quantile(0.95)(latency_ms) AS value, quantile(0.5)(latency_ms) AS p50`,
   },
   loop_retry_ratio: {
     layer: 'O',
     where: "event = 'step_executed'",
-    select: `countIf(${prop('retry_of_step_id')} != '') / count() AS value`,
+    select: `countIf(retry_of_step_id != '') / count() AS value`,
   },
   per_tool_failure_rate: {
     layer: 'O',
-    where: `event = 'step_executed' AND ${prop('tool_name')} != ''`,
-    select: `${prop('tool_name')} AS tool_name, countIf(${prop('status')} != 'ok') / count() AS value GROUP_BY tool_name`,
+    where: `event = 'step_executed' AND tool_name != ''`,
+    select: `tool_name, countIf(status != 'ok') / count() AS value GROUP_BY tool_name`,
   },
 
   /* ---------------- Q — Quality & Drift ---------------- */
   human_edit_distance: {
     layer: 'Q',
     where: "event = 'human_edited'",
-    select: `avg(JSONExtractFloat(payload, 'edit_magnitude', 'value')) AS value, count() AS edits`,
+    select: `avg(edit_magnitude_value) AS value, count() AS edits`,
   },
   regression_delta: {
     layer: 'Q',
@@ -130,7 +130,7 @@ export const METRICS: Record<string, MetricDef> = {
   },
   complaint_rate: {
     layer: 'Q',
-    select: `countIf(event = 'feedback_given' AND JSONExtractFloat(payload, 'rating', 'value') = 0) / greatest(countIf(event = 'task_completed'), 1) AS value`,
+    select: `countIf(event = 'feedback_given' AND rating_value = 0) / greatest(countIf(event = 'task_completed'), 1) AS value`,
   },
 
   /* ---------------- A — Autonomy & Trust ---------------- */
@@ -152,7 +152,7 @@ export const METRICS: Record<string, MetricDef> = {
   approval_friction: {
     layer: 'A',
     where: "event = 'human_approved'",
-    select: `quantile(0.5)(${num('response_latency_ms')}) AS value, quantile(0.95)(${num('response_latency_ms')}) AS p95`,
+    select: `quantile(0.5)(response_latency_ms) AS value, quantile(0.95)(response_latency_ms) AS p95`,
   },
 
   /* ---------------- R — Retention & Expansion ---------------- */
@@ -170,7 +170,7 @@ export const METRICS: Record<string, MetricDef> = {
   delegation_share: {
     layer: 'R',
     where: "event = 'task_started'",
-    select: `countIf(${prop('initiator')} IN ('agent', 'schedule')) / count() AS value`,
+    select: `countIf(initiator IN ('agent', 'schedule')) / count() AS value`,
   },
   net_task_growth: {
     layer: 'R',

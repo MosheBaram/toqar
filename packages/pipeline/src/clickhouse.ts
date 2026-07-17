@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
+import { chMigrate } from './ch-migrate.js';
 import type { EventRow } from './transform.js';
 
 export function createClickHouse(url: string): ClickHouseClient {
@@ -6,54 +8,32 @@ export function createClickHouse(url: string): ClickHouseClient {
 }
 
 /**
- * One wide events table (design D4). ReplacingMergeTree keyed on
- * (tenant_id, event_id) dedups redeliveries at merge time; exact reads
- * use FINAL — documented query guidance until 1.4's semantic layer
- * encodes it.
+ * Ensures the ClickHouse schema by applying the versioned migrations
+ * (spec: analytics-storage — see ch-migrate.ts for the schema itself).
+ * ReplacingMergeTree keyed on (tenant_id, task_type, event, timestamp,
+ * event_id) dedups redeliveries at merge time; exact reads use FINAL.
  */
 export async function ensureSchema(ch: ClickHouseClient): Promise<void> {
-  await ch.command({ query: 'CREATE DATABASE IF NOT EXISTS toqar' });
-  await ch.command({
-    query: `
-      CREATE TABLE IF NOT EXISTS toqar.events (
-        tenant_id     String,
-        event         LowCardinality(String),
-        event_id      UUID,
-        timestamp     DateTime64(3, 'UTC'),
-        task_id       String,
-        run_id        String,
-        task_type     LowCardinality(String),
-        agent_name    LowCardinality(String),
-        agent_version String,
-        payload       String
-      )
-      ENGINE = ReplacingMergeTree
-      PARTITION BY toDate(timestamp)
-      ORDER BY (tenant_id, event_id)
-    `,
-  });
-  // Citation records: every executed metric query, resolvable by q_ id.
-  await ch.command({
-    query: `
-      CREATE TABLE IF NOT EXISTS toqar.executed_queries (
-        query_id    String,
-        metric      String,
-        sql         String,
-        params      String,
-        executed_at DateTime64(3, 'UTC')
-      )
-      ENGINE = MergeTree
-      ORDER BY (query_id, executed_at)
-    `,
-  });
+  await chMigrate(ch);
 }
 
 export async function insertRows(ch: ClickHouseClient, rows: EventRow[]): Promise<void> {
   if (rows.length === 0) return;
+  // Deterministic batch token: on Replicated tables this makes producer/
+  // sink retries of the same batch free (block-level insert dedup); on
+  // plain MergeTree it is inert. Row-level convergence via
+  // ReplacingMergeTree stays the robust layer either way.
+  const token = createHash('sha256')
+    .update(rows.map((r) => r.event_id).join(','))
+    .digest('hex')
+    .slice(0, 32);
   await ch.insert({
     table: 'toqar.events',
     values: rows,
     format: 'JSONEachRow',
-    clickhouse_settings: { date_time_input_format: 'best_effort' },
+    clickhouse_settings: {
+      date_time_input_format: 'best_effort',
+      insert_deduplication_token: token,
+    },
   });
 }

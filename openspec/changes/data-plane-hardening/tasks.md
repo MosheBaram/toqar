@@ -7,11 +7,11 @@
 
 ## 1. Schema: keys, typed hot columns, codecs, partitioning (spec: analytics-storage)
 
-- [ ] 1.1 New events-table schema version: sort key `(tenant_id, task_type, event, timestamp)` (dedup identity preserved without leading on `event_id`); typed/materialized hot columns (cost_usd, tokens_in/out, latency_ms, tool_name, model, step status/error, verification, rating value, edit magnitude); retain `payload` for the long tail
-- [ ] 1.2 Column codecs (delta-family on timestamp, ZSTD on payload, integer codec on numerics); monthly `PARTITION BY`
-- [ ] 1.3 Migrate `toRow`/transform to populate typed columns; update the semantic layer to read typed columns instead of `JSONExtract` on the hot path — assert metric results unchanged (byte-for-byte against fixtures)
-- [ ] 1.4 Versioned, append-only ClickHouse migration (mirror the Postgres migration discipline); integration test covers create + backfill
-- [ ] 1.5 Commit, PR, merge
+- [x] 1.1 New events-table schema version: sort key `(tenant_id, task_type, event, timestamp)` (dedup identity preserved without leading on `event_id`); typed/materialized hot columns (cost_usd, tokens_in/out, latency_ms, tool_name, model, step status/error, verification, rating value, edit magnitude); retain `payload` for the long tail
+- [x] 1.2 Column codecs (delta-family on timestamp, ZSTD on payload, integer codec on numerics); monthly `PARTITION BY`
+- [x] 1.3 Migrate `toRow`/transform to populate typed columns; update the semantic layer to read typed columns instead of `JSONExtract` on the hot path — assert metric results unchanged (byte-for-byte against fixtures)
+- [x] 1.4 Versioned, append-only ClickHouse migration (mirror the Postgres migration discipline); integration test covers create + backfill
+- [x] 1.5 Commit, PR, merge
 
 ## 2. Dedup without per-query FINAL + incremental rollups (spec: analytics-storage)
 
