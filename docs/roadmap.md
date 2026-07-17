@@ -6,6 +6,10 @@ its phase runs. Each phase becomes one or more OpenSpec changes
 (`/opsx:new <change>`) **only when its entry gate opens** — pre-building
 gated work is the failure mode this repo was founded against.
 
+The business side — ICP, positioning, pricing, channels, the 90-day
+launch sequence — is `docs/business/go-to-market.md` (added 2026-07-17);
+this file remains the build plan.
+
 Main specs in `openspec/specs/` are the contract for what exists today:
 `event-registry`, `tracking-plan`, `instrumentation-skill`,
 `validation-ops`, `quality-gates`.
