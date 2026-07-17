@@ -152,6 +152,35 @@ export const CH_MIGRATIONS: ChMigration[] = [
  * happens at merge. Never a per-row mutation storm — one statement per
  * table.
  */
+/**
+ * Per-end-user right-to-be-forgotten (spec: data-governance): session_id
+ * is the end-user identity proxy in the schema (stated, not hidden — see
+ * weekly_task_actors). Lightweight delete = immediately invisible to every
+ * query; physical removal happens at merge (schedule purgeDeletedRows).
+ */
+export async function deleteEndUserEvents(
+  ch: import('@clickhouse/client').ClickHouseClient,
+  tenantId: string,
+  sessionId: string,
+): Promise<void> {
+  if (!tenantId || !sessionId) throw new Error('tenantId and sessionId required');
+  await ch.command({
+    query: 'DELETE FROM toqar.events WHERE tenant_id = {tenantId:String} AND session_id = {sessionId:String}',
+    query_params: { tenantId, sessionId },
+  });
+}
+
+/**
+ * Scheduled physical removal: forces merges so lightweight-deleted rows
+ * leave disk. Heavy — run on the erasure schedule, not per request.
+ */
+export async function purgeDeletedRows(
+  ch: import('@clickhouse/client').ClickHouseClient,
+): Promise<void> {
+  await ch.command({ query: 'OPTIMIZE TABLE toqar.events FINAL' });
+  await ch.command({ query: 'OPTIMIZE TABLE toqar.daily_rollups FINAL' });
+}
+
 export async function deleteTenantEvents(
   ch: import('@clickhouse/client').ClickHouseClient,
   tenantId: string,

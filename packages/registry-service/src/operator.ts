@@ -114,6 +114,47 @@ export class OperatorStore {
     ]);
   }
 
+  /**
+   * Right-to-be-forgotten lifecycle (spec: data-governance): every request
+   * is recorded before any deletion runs and completed with what was done.
+   * Owner-run — erasure is operator work — and doubly audited (erasure
+   * table + operator audit).
+   */
+  async requestErasure(
+    operator: string,
+    tenantId: string,
+    scope: 'tenant' | 'end_user',
+    subject?: string,
+  ): Promise<{ erasure_id: number }> {
+    const { rows } = await this.db.query(
+      `INSERT INTO erasure_audit (tenant_id, scope, subject, requested_by)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [tenantId, scope, subject ?? null, operator],
+    );
+    await this.audit(operator, 'erasure_requested', { tenant_id: tenantId, scope, subject: subject ?? null });
+    return { erasure_id: Number(rows[0]!.id) };
+  }
+
+  async completeErasure(operator: string, erasureId: number, detail: Record<string, unknown>): Promise<void> {
+    await this.db.query(
+      'UPDATE erasure_audit SET completed_at = now(), detail = $2 WHERE id = $1',
+      [erasureId, JSON.stringify(detail)],
+    );
+    await this.audit(operator, 'erasure_completed', { erasure_id: erasureId, ...detail });
+  }
+
+  async listErasures(tenantId?: string): Promise<Record<string, unknown>[]> {
+    const { rows } = tenantId
+      ? await this.db.query(
+          'SELECT id, tenant_id, scope, subject, requested_by, requested_at, completed_at, detail FROM erasure_audit WHERE tenant_id = $1 ORDER BY id DESC',
+          [tenantId],
+        )
+      : await this.db.query(
+          'SELECT id, tenant_id, scope, subject, requested_by, requested_at, completed_at, detail FROM erasure_audit ORDER BY id DESC',
+        );
+    return rows;
+  }
+
   async listOperatorAudit(limit = 100): Promise<Record<string, unknown>[]> {
     const { rows } = await this.db.query(
       'SELECT operator, action, detail, created_at FROM operator_audit ORDER BY id DESC LIMIT $1',

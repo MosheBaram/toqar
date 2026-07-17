@@ -353,6 +353,26 @@ export const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    // Erasure audit (spec: data-governance): every right-to-be-forgotten
+    // request from request to completion. Owner-only (erasure is operator
+    // work) and deliberately NOT foreign-keyed — the record must survive
+    // the tenant it erases.
+    id: '017_erasure_audit',
+    sql: `
+      CREATE TABLE erasure_audit (
+        id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tenant_id text NOT NULL,
+        scope text NOT NULL CHECK (scope IN ('tenant', 'end_user')),
+        subject text,
+        requested_by text NOT NULL,
+        requested_at timestamptz NOT NULL DEFAULT now(),
+        completed_at timestamptz,
+        detail jsonb NOT NULL DEFAULT '{}'::jsonb
+      );
+      CREATE INDEX erasure_audit_tenant_idx ON erasure_audit (tenant_id, id DESC);
+    `,
+  },
+  {
     // RLS engagement hardening (change: data-plane-hardening, group 5;
     // spec: tenancy delta).
     //

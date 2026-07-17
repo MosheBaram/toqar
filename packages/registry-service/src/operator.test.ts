@@ -141,6 +141,40 @@ describe('OperatorStore', () => {
     });
   });
 
+  describe('erasure lifecycle (spec: data-governance)', () => {
+    it('records request before deletion and completion after, doubly audited', async () => {
+      const acme = await registry.createTenant('Acme');
+      const { erasure_id } = await ops.requestErasure('alice@toqar', acme.tenantId, 'tenant');
+      let erasures = await ops.listErasures(acme.tenantId);
+      expect(erasures[0]).toMatchObject({ scope: 'tenant', requested_by: 'alice@toqar', completed_at: null });
+
+      await ops.completeErasure('alice@toqar', erasure_id, { events_deleted: true, crypto_shredded: true });
+      erasures = await ops.listErasures(acme.tenantId);
+      expect(erasures[0]!.completed_at).not.toBeNull();
+      expect(erasures[0]!.detail).toMatchObject({ crypto_shredded: true });
+
+      const audit = await ops.listOperatorAudit();
+      const actions = audit.map((a) => a.action);
+      expect(actions).toContain('erasure_requested');
+      expect(actions).toContain('erasure_completed');
+    });
+
+    it('per-end-user scope carries the subject', async () => {
+      const acme = await registry.createTenant('Acme2');
+      await ops.requestErasure('alice@toqar', acme.tenantId, 'end_user', 's_42');
+      const erasures = await ops.listErasures(acme.tenantId);
+      expect(erasures[0]).toMatchObject({ scope: 'end_user', subject: 's_42' });
+    });
+
+    it('the erasure record is owner-only — the tenant/RLS role cannot read it', async () => {
+      const acme = await registry.createTenant('Acme3');
+      await ops.requestErasure('alice@toqar', acme.tenantId, 'tenant');
+      await expect(
+        db.tenantTransaction(acme.tenantId, (tx) => tx.query('SELECT * FROM erasure_audit')),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('service health', () => {
     it('reports ok when the database is reachable', async () => {
       expect(await ops.health()).toMatchObject({ status: 'ok', database: 'up' });

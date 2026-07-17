@@ -7,7 +7,7 @@ import { compileDailyRollup, compileMetric } from '@toqar/analysis';
 import { perArmMetricSql } from '@toqar/experiments';
 import { usageMeterSql } from '@toqar/billing';
 import { createClickHouse, ensureSchema, insertRows } from './clickhouse.js';
-import { deleteTenantEvents } from './ch-migrate.js';
+import { deleteEndUserEvents, deleteTenantEvents } from './ch-migrate.js';
 import { createMetricExecutor } from './metric-executor.js';
 import { createRedpandaSink, ensureTopics, startEventsConsumer, EVENTS_DLQ_TOPIC, type ConsumerHandle } from './redpanda.js';
 import { toRow } from './transform.js';
@@ -350,6 +350,34 @@ suite('collector → Redpanda → ClickHouse', () => {
     await deleteTenantEvents(ch, goneTenant);
     expect(await count('toqar.events')).toBe(0);
     expect(await count('toqar.daily_rollups')).toBe(0);
+  });
+
+  it("an end-user's rows become invisible on erasure while the tenant's other data stays", async () => {
+    const euTenant = `t_eu_${Date.now()}`;
+    const base = {
+      schema_version: SCHEMA_VERSION,
+      run_id: 'run_1',
+      task_type: 'reply_to_lead',
+      agent: { name: 'sdr-agent', version: '1.0.0' },
+      tenant_id: euTenant,
+    };
+    const mk = (taskId: string, sessionId: string) =>
+      toRow({ ...base, event: 'task_started', event_id: crypto.randomUUID(), timestamp: '2026-07-05T12:00:00.000Z', task_id: taskId, session_id: sessionId, initiator: 'human' })!;
+    await insertRows(ch, [mk('t1', 's_forget_me'), mk('t2', 's_forget_me'), mk('t3', 's_keeper')]);
+
+    const count = async (where: string) => {
+      const r = await ch.query({
+        query: `SELECT count() AS c FROM toqar.events WHERE tenant_id = {t:String} AND ${where}`,
+        query_params: { t: euTenant },
+        format: 'JSONEachRow',
+      });
+      return Number((((await r.json()) as { c: string }[])[0])?.c ?? 0);
+    };
+    expect(await count("session_id = 's_forget_me'")).toBe(2);
+
+    await deleteEndUserEvents(ch, euTenant, 's_forget_me');
+    expect(await count("session_id = 's_forget_me'")).toBe(0); // immediately invisible
+    expect(await count("session_id = 's_keeper'")).toBe(1); // rest untouched
   });
 
   it('computes guardrail metrics per experiment arm from existing events (no new event types)', async () => {
