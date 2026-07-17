@@ -324,6 +324,15 @@ export const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    // Redaction-at-ingest control (spec: data-governance): redaction is the
+    // default; retaining un-redacted content is an explicit, audited,
+    // per-tenant opt-in.
+    id: '015_redaction_optout',
+    sql: `
+      ALTER TABLE tenants ADD COLUMN redaction_optout boolean NOT NULL DEFAULT false;
+    `,
+  },
+  {
     // RLS engagement hardening (change: data-plane-hardening, group 5;
     // spec: tenancy delta).
     //

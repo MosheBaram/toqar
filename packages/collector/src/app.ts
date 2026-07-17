@@ -7,12 +7,14 @@ import {
 import { RegistryStore, type SqlExecutor } from '@toqar/registry-service';
 import { z } from 'zod';
 import { mapResourceSpans, type OtlpResourceSpans } from './otel.js';
+import { redactEvent } from './redact.js';
 import { BackpressureError, type BufferedSink } from './sink.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
     collectorTenantId: string;
     collectorRetentionDays: number;
+    collectorRedact: boolean;
   }
 }
 
@@ -54,6 +56,7 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
 
   app.decorateRequest('collectorTenantId', '');
   app.decorateRequest('collectorRetentionDays', 365);
+  app.decorateRequest('collectorRedact', true);
 
   app.get('/health', async () => {
     const health = sink.health();
@@ -67,16 +70,19 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
     const tenantId = bearer ? await store.findTenantByToken(bearer) : null;
     if (!tenantId) return reply.code(401).send({ error: 'unauthorized' });
     req.collectorTenantId = tenantId;
-    // Per-tenant analytics retention rides every enriched event into
-    // ClickHouse, where the events TTL is timestamp + retention_days
-    // (spec: analytics-storage).
-    req.collectorRetentionDays = await store.getRetentionDays(tenantId);
+    // Per-tenant ingest settings: retention rides every enriched event
+    // (spec: analytics-storage); redaction is the default and opting out
+    // is an explicit, audited tenant setting (spec: data-governance).
+    const settings = await store.getIngestSettings(tenantId);
+    req.collectorRetentionDays = settings.retention_days;
+    req.collectorRedact = settings.redact;
   });
 
   app.post<{ Body: { events?: unknown[] } }>('/v1/events', async (req, reply) => {
     const events = Array.isArray(req.body?.events) ? req.body.events : [];
     const accepted: Record<string, unknown>[] = [];
     const rejected: Rejection[] = [];
+    let redactedCount = 0;
 
     events.forEach((value, index) => {
       const name =
@@ -86,11 +92,18 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
       const schema = CORE_EVENTS.has(name) ? toqarEventSchema : productEventSchema;
       const parsed = schema.safeParse(value);
       if (parsed.success) {
-        accepted.push({
+        const enriched = {
           ...(parsed.data as Record<string, unknown>),
           tenant_id: req.collectorTenantId,
           retention_days: req.collectorRetentionDays,
-        });
+        };
+        if (req.collectorRedact) {
+          const result = redactEvent(enriched);
+          redactedCount += result.redactions.reduce((n, r) => n + r.count, 0);
+          accepted.push(result.event);
+        } else {
+          accepted.push(enriched);
+        }
         return;
       }
       const reasons = parsed.error.issues.map((i) => `${i.path.join('.') || 'event'}: ${i.message}`);
@@ -113,7 +126,7 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
       throw err;
     }
 
-    return reply.code(202).send({ accepted: accepted.length, rejected });
+    return reply.code(202).send({ accepted: accepted.length, rejected, redacted: redactedCount });
   });
 
   app.get('/v1/rejections', async (req) => rejections.for(req.collectorTenantId));
@@ -125,11 +138,14 @@ export function buildCollectorApp(db: SqlExecutor, sink: BufferedSink): FastifyI
     for (let i = 0; i < unmapped.length; i++) {
       rejections.record(req.collectorTenantId, 'unmapped_span');
     }
-    const enriched = events.map((e) => ({
-      ...e,
-      tenant_id: req.collectorTenantId,
-      retention_days: req.collectorRetentionDays,
-    }));
+    const enriched = events.map((e) => {
+      const withTenant = {
+        ...e,
+        tenant_id: req.collectorTenantId,
+        retention_days: req.collectorRetentionDays,
+      };
+      return req.collectorRedact ? redactEvent(withTenant).event : withTenant;
+    });
     try {
       await sink.publish(enriched);
     } catch (err) {

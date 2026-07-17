@@ -797,11 +797,41 @@ export class RegistryStore {
 
   /** Analytics retention window (spec: analytics-storage). Default 365. */
   async getRetentionDays(tenantId: string): Promise<number> {
+    return (await this.getIngestSettings(tenantId)).retention_days;
+  }
+
+  /** One scoped read for everything the collector needs per request. */
+  async getIngestSettings(tenantId: string): Promise<{ retention_days: number; redact: boolean }> {
     return this.scoped(tenantId, async (tx) => {
-      const { rows } = await tx.query('SELECT retention_days FROM tenants WHERE id = $1', [
+      const { rows } = await tx.query(
+        'SELECT retention_days, redaction_optout FROM tenants WHERE id = $1',
+        [tenantId],
+      );
+      return {
+        retention_days: rows.length ? Number(rows[0]!.retention_days) : 365,
+        redact: rows.length ? !rows[0]!.redaction_optout : true,
+      };
+    });
+  }
+
+  /** Un-redacted retention is an explicit, audited opt-in (spec: data-governance). */
+  async setRedactionOptout(tenantId: string, value: unknown, actor: string): Promise<void> {
+    const parsed = z.object({ redaction_optout: z.boolean() }).safeParse(value);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+    await this.scoped(tenantId, async (tx) => {
+      await tx.query('UPDATE tenants SET redaction_optout = $2 WHERE id = $1', [
         tenantId,
+        parsed.data.redaction_optout,
       ]);
-      return rows.length ? Number(rows[0]!.retention_days) : 365;
+      await this.audit(
+        tx,
+        tenantId,
+        actor,
+        'retention',
+        parsed.data.redaction_optout ? 'redaction_optout' : 'redaction_on',
+        null,
+        parsed.data,
+      );
     });
   }
 
