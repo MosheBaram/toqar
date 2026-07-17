@@ -17,10 +17,10 @@
 
 ## 2. Agent-native schema + trace explorer (spec: trace-explorer)
 
-- [ ] 2.1 First-class run reconstruction over events/OTLP: agents, sub-agents, sessions/turns where human-shaped, headless runs without fabricated sessions; materialized-path sort for O(1) waterfalls; TDD (wants data-plane-hardening group 1 first)
-- [ ] 2.2 Metrics compute over the same entities (per-agent override rate, per-tool failure by agent); TDD reconciliation with existing metrics
-- [ ] 2.3 Run drill-down view in `apps/web`: waterfall, tool/model/token/cost context, error+retry highlighting, human events in place; findings link into runs
-- [ ] 2.4 Commit, PR, merge
+- [x] 2.1 First-class run reconstruction over events/OTLP: agents, sub-agents, sessions/turns where human-shaped, headless runs without fabricated sessions; materialized-path sort for O(1) waterfalls; TDD (wants data-plane-hardening group 1 first)
+- [x] 2.2 Metrics compute over the same entities (per-agent override rate, per-tool failure by agent); TDD reconciliation with existing metrics
+- [x] 2.3 Run drill-down: MCP `get_run` tool (the agent-native query surface with ClickHouse access) + `RunWaterfall` component in apps/web over the tested `waterfallRows` helper *(findings→run deep-links need run refs on the finding schema — deferred with the alerting UI wiring)*
+- [x] 2.4 Commit, PR, merge
 
 ## 3. Failure/topic clustering (spec: failure-clustering)
 

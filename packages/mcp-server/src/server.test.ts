@@ -18,6 +18,11 @@ const executor = createFixtureExecutor({
     { tool_name: 'email_send', value: 0.02 },
   ],
   task_success_rate: [{ value: 0.62, ended_tasks: 672 }],
+  run_events: [
+    { event: 'task_started', timestamp: '2026-07-17T10:00:00.000Z', agent_name: 'sdr-agent', tool_name: '', model: '', status: '', latency_ms: 0, tokens_in: 0, tokens_out: 0, cost_usd: 0, retry_of_step_id: '', session_id: '', task_type: 'reply_to_lead' },
+    { event: 'step_executed', timestamp: '2026-07-17T10:00:01.000Z', agent_name: 'sdr-agent', tool_name: 'crm_lookup', model: 'claude-opus-4-8', status: 'error', latency_ms: 900, tokens_in: 400, tokens_out: 80, cost_usd: 0.1, retry_of_step_id: '', session_id: '', task_type: 'reply_to_lead' },
+    { event: 'task_failed', timestamp: '2026-07-17T10:00:02.000Z', agent_name: 'sdr-agent', tool_name: '', model: '', status: '', latency_ms: 0, tokens_in: 0, tokens_out: 0, cost_usd: 0, retry_of_step_id: '', session_id: '', task_type: 'reply_to_lead' },
+  ],
 });
 
 beforeAll(async () => {
@@ -72,6 +77,7 @@ describe('toqar MCP server', () => {
     expect(names).toEqual([
       'get_finding',
       'get_registry',
+      'get_run',
       'get_verdict',
       'list_experiments',
       'list_findings',
@@ -143,3 +149,19 @@ describe('toqar MCP server', () => {
     expect(textOf(result)).toContain('unknown metric');
   });
 });
+
+describe('get_run (spec: trace-explorer)', () => {
+  it('answers "why did this run fail?" with ordered steps, error context, and a citation', async () => {
+    const result = await client.callTool({
+      name: 'get_run',
+      arguments: { task_id: 'task_9', run_id: 'run_1' },
+    });
+    const body = JSON.parse((result.content as { text: string }[])[0]!.text);
+    expect(body.query_id).toMatch(/^q_[0-9a-f]{16}$/);
+    expect(body.run.outcome).toBe('failed');
+    expect(body.run.steps[0]).toMatchObject({ tool_name: 'crm_lookup', status: 'error', latency_ms: 900 });
+    expect(body.run.session_id).toBeNull(); // headless — never fabricated
+    expect(body.run.totals.errors).toBe(1);
+  });
+});
+
