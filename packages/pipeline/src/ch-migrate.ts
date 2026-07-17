@@ -74,6 +74,53 @@ export const CH_MIGRATIONS: ChMigration[] = [
       ORDER BY (query_id, executed_at)`,
     ],
   },
+  {
+    // Incremental rollups + insert idempotency (change: data-plane-hardening,
+    // group 2; spec: analytics-storage).
+    //
+    // - Block-level insert dedup on the non-replicated table so a retried
+    //   identical batch (same insert_deduplication_token) is skipped — on
+    //   BOTH the events table and, via
+    //   deduplicate_blocks_in_dependent_materialized_views at insert time,
+    //   the rollup target. Row-level ReplacingMergeTree stays the robust
+    //   convergence layer beneath.
+    // - daily_rollups: SummingMergeTree of pure counters at
+    //   (tenant_id, task_type, day) grain — TSR and CPCT read as sums.
+    //   The MV's GROUP BY matches the target's ORDER BY (hard rule). A
+    //   rollup is a cache of the raw events, never a second source of
+    //   truth: the reconcile test asserts sums equal the raw-event metric.
+    id: '002_daily_rollups',
+    statements: [
+      `ALTER TABLE toqar.events MODIFY SETTING non_replicated_deduplication_window = 1000`,
+      `CREATE TABLE IF NOT EXISTS toqar.daily_rollups (
+        tenant_id String,
+        task_type LowCardinality(String),
+        day       Date,
+        completed UInt64,
+        ended     UInt64,
+        abandoned UInt64,
+        cost_usd  Float64,
+        events    UInt64
+      )
+      ENGINE = SummingMergeTree
+      PARTITION BY toYYYYMM(day)
+      ORDER BY (tenant_id, task_type, day)
+      SETTINGS non_replicated_deduplication_window = 1000`,
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS toqar.daily_rollups_mv
+      TO toqar.daily_rollups AS
+      SELECT
+        tenant_id,
+        task_type,
+        toDate(timestamp) AS day,
+        countIf(event = 'task_completed') AS completed,
+        countIf(event IN ('task_completed', 'task_failed', 'task_abandoned')) AS ended,
+        countIf(event = 'task_abandoned') AS abandoned,
+        sum(cost_usd) AS cost_usd,
+        count() AS events
+      FROM toqar.events
+      GROUP BY tenant_id, task_type, day`,
+    ],
+  },
 ];
 
 /** Applies pending migrations in order; already-applied ids are skipped. */

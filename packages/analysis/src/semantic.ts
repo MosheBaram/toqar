@@ -221,6 +221,11 @@ export function compileMetric(name: string, args: MetricArgs): MetricQuery {
   let sql = `SELECT ${selectCols} FROM toqar.events FINAL WHERE ${where}`;
   if (groupCols) sql += ` GROUP BY ${groupCols}`;
   if (def.outer) sql = def.outer(sql).replace(' GROUP_BY_MARKER', '');
+  // Bounded FINAL (spec: analytics-storage): the dedup identity includes
+  // the timestamp, so a duplicate can never land in a different partition
+  // — partition-local FINAL is exactly correct and skips the cross-
+  // partition merge cost.
+  sql += ' SETTINGS do_not_merge_across_partitions_select_final = 1';
 
   // ClickHouse DateTime64 params reject the ISO trailing Z — normalize to
   // its canonical form; the citation record carries what actually executed.
@@ -239,4 +244,33 @@ export function compileMetric(name: string, args: MetricArgs): MetricQuery {
 /** Execution seam (design D4): fixture rows in unit tests, real ClickHouse in integration. */
 export interface QueryExecutor {
   execute(query: MetricQuery): Promise<Record<string, unknown>[]>;
+}
+
+/**
+ * Daily rollup read (spec: analytics-storage): served from the
+ * incrementally-maintained toqar.daily_rollups (SummingMergeTree fed by an
+ * insert-time MV), not recomputed from raw events. A rollup is a cache —
+ * the integration suite reconciles it against the raw-event metrics. Same
+ * citation contract as every metric: parameterized, tenant-scoped, q_ id.
+ */
+export function compileDailyRollup(args: MetricArgs): MetricQuery {
+  if (!args.tenantId) throw new Error('a tenant is required — unscoped queries are unrepresentable');
+  // Aliases must not shadow source columns (sum(completed) AS completed
+  // would make the later reference a nested aggregate in ClickHouse).
+  const sql =
+    'SELECT day, sum(completed) AS completed_tasks, sum(ended) AS ended_tasks, ' +
+    'sum(abandoned) AS abandoned_tasks, sum(cost_usd) AS total_cost_usd, ' +
+    'completed_tasks / greatest(ended_tasks, 1) AS task_success_rate, ' +
+    'total_cost_usd / greatest(completed_tasks, 1) AS cost_per_completed_task ' +
+    'FROM toqar.daily_rollups WHERE tenant_id = {tenantId:String} ' +
+    'AND day >= toDate({from:DateTime64(3)}) AND day <= toDate({to:DateTime64(3)}) ' +
+    'GROUP BY day ORDER BY day';
+  const ts = (iso: string) => iso.replace('T', ' ').replace(/Z$/, '');
+  const params: Record<string, string> = {
+    tenantId: args.tenantId,
+    from: ts(args.from),
+    to: ts(args.to),
+  };
+  const id = `q_${createHash('sha256').update(sql + JSON.stringify(params)).digest('hex').slice(0, 16)}`;
+  return { id, metric: 'daily_rollup', layer: 'T', sql, params };
 }
